@@ -1,4 +1,4 @@
-# gentle_react_V3
+# gentle_react_V5
 
 ## Introduction:
 
@@ -474,14 +474,13 @@ The second function presented here also highlights why we need the fixed prop th
                                                                                       {key:node.key,
                                                                                         name:node.name,
                                                                                         size:node.size,
-                                                                                        fixed:true,
                                                                                         color: node.color,
                                                                                         sex: node.sex,
                                                                                         age: node.age,
                                                                                         categoryColor: node.categoryColor,
-                                                                                        x:(node.fixedPosX !== 0 ?
+                                                                                        fx:(node.fixedPosX !== 0 ?
                                                                                             node.fixedPosX:(200 + (175*i))),
-                                                                                        y:(node.fixedPosY !== 0 ?
+                                                                                        fy:(node.fixedPosY !== 0 ?
                                                                                             node.fixedPosY:(250))
                                                                                        }
                                                                               ))}
