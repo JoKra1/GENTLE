@@ -132,14 +132,29 @@ class Main extends Component {
 export default Main;
 ```
 
-We have set up everything of importance in the render function again. As you can notice we already wrapped everything in the HashRouter tag. The rendered div contains an unordered list that later corresponds to our taskbar and an empty div that we will fill with the content rendered by our second-order components. There are multiple tutorials out there showing how to setup NavLink and Routing for SPA's so we are just going to fill the header with the links to the 5 example pages we want to highlight:
+We have set up everything of importance in the render function again. As you can notice we already wrapped everything in the HashRouter tag. The rendered div contains an unordered list that later corresponds to our taskbar and an empty div that we will fill with the content rendered by our second-order components. There are multiple tutorials out there showing how to setup NavLink and Routing for SPA's using react-bootstrap so we are just going to fill the header with the links to the 5 example pages we want to highlight:
   
  ```
-<li><NavLink exact to="/">NODEBUTTON</NavLink></li>
-<li><NavLink to="/NODESLIDER">NODESLIDER</NavLink></li>
-<li><NavLink to="/NODECATEGORIES">Age</NavLink></li>
-<li><NavLink to="/NODEBOXES">NODEBOXES</NavLink></li>
-<li><NavLink to="/NODES">NODES</NavLink></li>
+                  <NavItem>
+                    <NavLink className ="nav-link" exact to="/" onClick={() =>
+                                                                         (this.setState({counter:this.state.nodes.length
+                                                                         }))}>NODEBUTTON</NavLink>
+                  </NavItem>
+                  <NavItem>
+                    <NavLink className ="nav-link" to="/NODESLIDER"  onClick={() => (this.determineCounter("age",
+                                                                                      ""))}>NODESLIDER</NavLink>
+                  </NavItem >
+                  <NavItem>
+                    <NavLink className ="nav-link" to="/NODECATEGORIES"  onClick={() => 
+                                                                                  (this.determineCounter("category", "")
+                                                                                  )}>NODECATEGORIES</NavLink>
+                  </NavItem>
+                  <NavItem>
+                    <NavLink className ="nav-link" to="/NODEBOXES" >NODEBOXES</NavLink>
+                  </NavItem>
+                  <NavItem>
+                    <NavLink className ="nav-link" exact to="/NODES" >NODES</NavLink>
+                  </NavItem>
  ```
  
  Finally we fill the content div with the Routes that will ultimately render the component. We only picture one here:
