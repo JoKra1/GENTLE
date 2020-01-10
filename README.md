@@ -1,5 +1,7 @@
 # gentle_react_V3
 
+[![DOI](https://zenodo.org/badge/228672818.svg)](https://zenodo.org/badge/latestdoi/228672818)
+
 ## Introduction:
 
 GENTLE - The Grapical Ego-Network Tool for Longitudinal Examination, is a frontend framework including multiple modular components designed to allow researchers to easily gather data about social networks. Gentle runs on React and relies on the D3.js library for the data-driven visualisation of individuals involved in a social network. Those individuals are represented as nodes and GENTLE offers various ways to manipulate, interact with, and change the nodes and relationships between them in an easy, playful way.
