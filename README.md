@@ -1,6 +1,6 @@
 # gentle_react_V3
 
-[![DOI](https://zenodo.org/badge/228672818.svg)](https://zenodo.org/badge/latestdoi/228672818)
+
 
 ## Introduction:
 
