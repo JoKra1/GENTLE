@@ -1,5 +1,7 @@
 # Visualizing Large Dynamic Networks using Gentle
 
+![Example Networks](https://github.com/JoKra1/GENTLE/blob/dynamic-networks/examples/Gentle_Github_Network_Image.jpg)
+
 GENTLE's main purpose is to handle the interaction between the powerfull data-driven visualization framework d3.js and the popular front-end framework React. As was shortly mentioned in the README in the main branch, those frameworks both come with the capacity for rendering content in the browser and are thus often in conflict. The basic graph component we introduced in the past thus detaches the rendering of the network from the remainder of the web-app. React handles the rest, including both the much needed routing which allows participants to navigate freely between all of the views included in a single study as well as the updates of all necessary information on all relevant views.
 
 One of the problems with the Graph component stems from the fact that to determine the position of each node it relies on foci. Each node gravitates towards its focus as soon as the underlying force simulation of d3.js' force module is started. Additionally, nodes remain in place once they have reached the focus point. It is possible to disable the foci driven allocation of the nodes, and we do that for example for views that require participants to drag nodes into boxes to allocate them to some category. In that case d3.js relies on the position of the node itself, which is updated whenever one interacts with a node.
@@ -164,5 +166,4 @@ if(this.props.float) {
 ```
 
 Finally, in the example uploaded here we added a "You" node. In the callback we prevent links to the "You" node since we believe that its main purpose is to serve as a visual anchor. This is mainly due to the fact that commonly participants are asked to connect the nodes to individuals representing people that participants have some relationship with. If that is the case adding links from each node to the "You" node is not only redundant but can also be perceived to be frustrating. We still include the "You" node because due to the combination of the fact that nodes repell each other if they are not connected and the gravitational forces attracting nodes to the center, the networks will float around the "You" node providing a pleasant visual experience. It is however easy to omit the "You" node entirely or to enable links to the "You" node as described in the comments added to the callback.
-
 
