@@ -4,10 +4,14 @@
 
 ## Introduction:
 
+![Example Network](https://github.com/JoKra1/GENTLE/blob/master/examples/Gentle_Github_Network_Image.jpg)
+
 GENTLE - The Grapical Ego-Network Tool for Longitudinal Examination, is a frontend framework including multiple modular components designed to allow researchers to easily gather data about social networks. Gentle runs on React and relies on the D3.js library for the data-driven visualisation of individuals involved in a social network. Those individuals are represented as nodes and GENTLE offers various ways to manipulate, interact with, and change the nodes and relationships between them in an easy, playful way.
 
 A Demo version of Gentle can be tested [here](https://www.gentle.eu/#/).
 Note: The screen where nodes can be placed in boxes might not work on all screens. We do not collect any data during the demo process.
+
+If you want to render large dynamic Networks as shown in the example above head over to the [dynamic-network branch](https://github.com/JoKra1/GENTLE/tree/dynamic-networks).
 
 ## Content:
 
