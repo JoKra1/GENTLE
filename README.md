@@ -1,4 +1,5 @@
 # Visualizing Large Dynamic Networks using Gentle
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3604009.svg)](https://doi.org/10.5281/zenodo.3604009)
 
 ![Example Networks](https://github.com/JoKra1/GENTLE/blob/dynamic-networks/examples/Gentle_Github_Network_Image.jpg)
 
