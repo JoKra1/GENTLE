@@ -3,12 +3,34 @@ import * as d3 from 'd3';
 import ReactDOM from "react-dom";
 import {isEqual} from 'underscore';
 
+var width = (window.innerWidth > 1140? 1140:window.innerWidth) - 60;
+var height = window.innerHeight *0.75;
 
+/**
+ * Graph class handling dynamic and static rendering for networks.
+ * 
+ * References:
+ * 
+ * d3 API:
+ * https://github.com/d3/d3-3.x-api-reference/blob/master/Force-Layout.md
+ * 
+ * d3 Foci based example:
+ * https://bl.ocks.org/mbostock/1021953
+ * 
+ * d3 & REACT interaction:
+ * The class here is very bloated due to all the checks and
+ * conditional adaptations necessary to the graph. A much cleaner
+ * but slightly outdated example of the interaction between the
+ * two frameworks is presented here:
+ * http://bl.ocks.org/sxywu/fcef0e6dac231ef2e54b
+ * 
+ * The reference keeping is discussed here:
+ * https://reactjs.org/docs/refs-and-the-dom.html
+ * https://stackoverflow.com/questions/43873511/deprecation-warning-using-this-refs
+ * 
+ */
 
-var width = 1;
-var height = window.innerHeight *0.7;
-
-class Graph extends Component{
+ class Graph extends Component{
 
   constructor(props){
 
@@ -24,7 +46,10 @@ class Graph extends Component{
     .on("dragend", (e) => this.dragCallBack(e))
   }
 
-
+  /**
+   * Handles callbacks for views that allow for node dragging into boxes (desktop only)
+   * @param {event} e d3.js event
+   */
   dragCallBack = (e) => {
     //for fixed nodes
     if(this.props.fixed) {
@@ -33,26 +58,38 @@ class Graph extends Component{
 
   }
 
+  /**
+   * Handles all remaining callback cases (clicking, connecting, etc.)
+   * @param {node} d data object of a node
+   * @param {this} _this 
+   */
   callback = (d, _this) => {
     let nodes = JSON.parse(JSON.stringify(this.force.nodes()));
     this.force.alpha(0.2);
-    //extension of callback compared to static network component because
-    //information about the nodes is required.
     this.props.callBack(d.key, nodes);
   }
   
+  /**
+   * Enter cycle for nodes (see d3.js docs)
+   * @param {*} v3d virtual dom object
+   */
   enterCycleNodes = (v3d) => {
-    //enter cycle d3 for nodes
+    console.log(this.props.opac);
     this.force.start();
-    if(this.props.opac) {
+    if(this.props.opac == "static") {
       v3d.classed('node', true)
       .call(this.force.drag)
-      .style("opacity", (d) => (d.x/1000 > 0.1? d.x/1000: 0.1)); //current node has 0.65 opacity
+      .style("opacity", (d) => (0.65)); //all nodes have 0.7 opacity
+    } else if(this.props.opac == "dynamic") {
+      v3d.classed('node', true)
+      .call(this.force.drag)
+      .style("opacity", (d) => (d.x/width + 0.1)); //all nodes have 0.7 opacity
     } else{
         v3d.classed('node', true)
             .call(this.force.drag)
             .style("opacity", (d) => (d.key === this.props.counter ? 0.65: 1)); //current node has 0.65 opacity
     }
+
     v3d.append("circle")
         .attr("class", "Node_center")
         .attr("id", (d) => d.key)
@@ -90,11 +127,21 @@ class Graph extends Component{
 
   };
 
+  /**
+   * Enter cycle for links (see d3.js docs)
+   * @param {*} v3d virtual dom object
+   */
   enterCycleLinks = (v3d) => {
-    //enter cycle d3 for links
     //optional data driven style paramaters can be included here, e.g. stroke-width
     v3d.classed('link', true);
   };
+
+  /**
+   * Update positions of nodes using foci and alpha
+   * to gradually move nodes to their designated foci points.
+   * @param {*} v3d virtual dom object
+   * @param {*} foci foci of nodes
+   */
   
   updateVirtualD3 = (v3d, foci) => {
     //update Node position determined by foci
@@ -109,14 +156,14 @@ class Graph extends Component{
         
         if(d.x < 0) {
           d.x = 35;
-        } else if (d.x > 1077) {
-          d.x = 1077-25;
+        } else if (d.x > width) {
+          d.x = width-35;
         }
 
         if(d.y < 0) {
           d.y = 35;
-        } else if (d.y > 1077) {
-          d.y = 1077 - 25;
+        } else if (d.y > height) {
+          d.y = height - 35;
         }
         
       });
@@ -136,26 +183,32 @@ class Graph extends Component{
   };
   
   
-  
+  /**
+   * D3 takes over to render node parts, independet of REACT
+   */
   componentDidMount() {
-    //console.log("this.props.links: ", this.props.links);
-    this.virtualD3 = d3.select(ReactDOM.findDOMNode(this.refs.graph));
+    this.virtualD3 = d3.select(ReactDOM.findDOMNode(this.graphRef));
     this.force.on('tick', (e) => {
-      // d3 handles rendering
       this.virtualD3.call(this.updateVirtualD3, JSON.parse(JSON.stringify(this.props.foci)));
     }); 
   }
 
 
-
+  /**
+   * Decision method for rendering. Renders nodes statically (cools down force in network
+   * if no changes were made) or dynamically (lets nodes take on positions freely)
+   * Additionally assigns individual node properties for the network screen using
+   * properties definded by network callback (see main)
+   */
   componentDidUpdate() {
     //Props need to remain Pure in React, Force would manipulate props, thus deep copy.
-    //console.log(this.props.nodes, this.props.links);
+
     let nodes = JSON.parse(JSON.stringify(this.props.nodes));
     let links = JSON.parse(JSON.stringify(this.props.links));
     let foci = JSON.parse(JSON.stringify(this.props.foci));
     let conditionNode = 0;
     let conditionFoci = 0;
+
     if(this.props.prevNodes.length !== this.props.nodes.length) {
       //simple test for equality
       conditionNode = 1;
@@ -169,8 +222,9 @@ class Graph extends Component{
         }
 
     }
+    // something about the nodes is in-equal - might be data or position
     if(conditionNode) {
-      this.virtualD3 = d3.select(ReactDOM.findDOMNode(this.refs.graph));
+      this.virtualD3 = d3.select(ReactDOM.findDOMNode(this.graphRef));
 
       var vd3Nodes = this.virtualD3.selectAll('.node')
         .data(nodes, (node) => node.key);
@@ -182,6 +236,7 @@ class Graph extends Component{
 
       vd3Nodes.enter().append('g').call(this.enterCycleNodes);
       vd3Nodes.exit().remove();
+
       var vd3Links = this.virtualD3.selectAll('.link')
         .data(links, (link) => link.key);
       vd3Links.enter().insert('line', '.node').call(this.enterCycleLinks);
@@ -205,34 +260,51 @@ class Graph extends Component{
   
       }
 
+      // For network connection screen we need to further diverge from the static/dynamic distinction.
+      // The following lines use the float property set by network callback to
+      // decide link strength and charge properties.
+      // Additionally, the conditionFoci variable is set to 0
+      // since for the network screen we always want a static render first
+
       if(this.props.float) {
-        //Manipulate gravity to prevent Nodes from escaping.
         this.force.gravity(0.25);
         conditionFoci = 0;
-        //Manipulate charge. Higher charge for those Nodes in the Network
-        //minimizing the chance that links/nodes are overlapping.
-        this.force.charge((d) =>((d.float ? - 1500:-30)))
-        //Manipulate Link Distance for each node individually. Nodes with more
-        //Links receive longer distances to allow for a better distribution of the
-        //network. Those parameters should be tuned depending on the network size.
-        //The link property is determined in the callback.
+        if (window.innerWidth > 500) {
+          this.force.charge((d) =>((d.float ? -1500:-30)))
+        } else {
+          this.force.charge((d) =>((d.float ? -450:-30)))
+        }
         this.force.linkDistance(function(d,i) {
-
-                                  let link = (d.source.link > d.target.link ?
-                                              d.source.link *10: d.target.link *10)
-                                  if (link < 35) {
-                                      return 35;
-                                  } else if (link > 55) {
-                                      return 55;
+                                  if (window.innerWidth > 500) {
+                                    let link = (d.source.link > d.target.link ?
+                                      d.source.link *10: d.target.link *10)
+                                    if (link < 35) {
+                                        return 35;
+                                    } else if (link > 55) {
+                                        return 55;
+                                    } else {
+                                        return link;
+                                    }
                                   } else {
-                                      return link;
+                                    let link = (d.source.link > d.target.link ?
+                                      d.source.link *3: d.target.link *3)
+                                    if (link < 5) {
+                                        return 5;
+                                    } else if (link > 10) {
+                                        return 10;
+                                    } else {
+                                        return link;
+                                    }
                                   }
+                                  
                                 })
       }
 
       this.props.collectHistory(nodes, foci);
       this.force.nodes(nodes).links(links);
 
+      // cool down network sufficiently to prevent fading in == static rendering
+      // will always take place on the network connection screen.
       if(!conditionFoci) {
         for(let i = this.force.alpha(); i > 0.005; i = i - 0.001) {
 
@@ -246,7 +318,8 @@ class Graph extends Component{
       this.force.start();
 
     } else{
-      //skip update just rerender
+
+      //skip update just rerender in case nothing changed (or data only)
       var vd3Nodes = this.virtualD3.selectAll('.node')
       .data(nodes);
       var vd3Links = this.virtualD3.selectAll('.link')
@@ -255,6 +328,8 @@ class Graph extends Component{
       vd3Links.enter().insert('line', '.node').call(this.enterCycleLinks);
       this.force.nodes(nodes).links(links);
 
+      // cool down network sufficiently to prevent fading in == static rendering
+      // will always take place on the network connection screen.
       for(let i = this.force.alpha(); i > 0.005; i = i - 0.001) {
         //static rendering prevents "fading in"
         this.virtualD3.call(this.updateVirtualD3,foci);
@@ -268,21 +343,27 @@ class Graph extends Component{
 
 
   render() {
-    if(document.getElementById("content")){
-      width = document.getElementById("content").clientWidth
-    }
+    
     return (
       <div className="container">
-      <svg width="100%" height={height} ref='graph'>
-        <g id="boxes">
-        {(this.props.categories ? this.props.categories.map( (category, i) => (
-            <text key={category.key} x={category.x} y={category.y -10}>{category.text}</text>
-          )):<g/>)}
+        <svg width="100%" height="75VH" ref={(e) => this.graphRef = e}>
+          <g id="boxes">
           {(this.props.categories ? this.props.categories.map( (category, i) => (
-            <rect className="CategoryBox" key={category.key} width={category.width} height={category.height} x={category.x} y={category.y} fill="transparent" stroke={category.color} strokeWidth="5"/>
-          )):<g/>)}
-        </g>
-      </svg>
+              <text key={category.key} x={category.x} y={category.y -10}>{category.text}</text>
+            )):<g/>)}
+            {(this.props.categories ? this.props.categories.map( (category, i) => (
+              <rect className="CategoryBox"
+                    key={category.key}
+                    width={category.width}
+                    height={category.height}
+                    x={category.x}
+                    y={category.y}
+                    fill="transparent"
+                    stroke={category.color}
+                    strokeWidth="5"/>
+            )):<g/>)}
+          </g>
+        </svg>
       </div>
     );
   }
