@@ -74,7 +74,6 @@ var height = window.innerHeight *0.75;
    * @param {*} v3d virtual dom object
    */
   enterCycleNodes = (v3d) => {
-    console.log(this.props.opac);
     this.force.start();
     if(this.props.opac == "static") {
       v3d.classed('node', true)

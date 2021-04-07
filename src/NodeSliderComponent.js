@@ -36,7 +36,7 @@ class NodeSliderComponent extends Component {
   }
 
   checkCondition(event){
-    if(this.props.counter > this.props.max) {
+    if(this.props.counter > (this.props.nodes.length - 1)) {
       this.props.callBackButton(this.props.counter,this.state.value);
       return true
     } else {
@@ -74,7 +74,7 @@ class NodeSliderComponent extends Component {
                 <NavLink id="confirm_link"
                        exact to = {this.props.route}
                        onClick={this.checkCondition.bind(this)}>
-                <button id="confirm" >{this.props.counter > this.props.nodes.length ? "Confirm & Next":"Confirm"}</button>
+                <button id="confirm" >{this.props.counter > (this.props.nodes.length - 1) ? "Confirm & Next":"Confirm"}</button>
               </NavLink>
             </div>
         </div>

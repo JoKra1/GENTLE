@@ -1,9 +1,6 @@
 # Visualizing Large Dynamic Networks using Gentle
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3604009.svg)](https://doi.org/10.5281/zenodo.3604009)
 
-
-![Example Networks](https://github.com/JoKra1/GENTLE/blob/dynamic-networks/examples/Gentle_Github_Network_Image.jpg)
-
 ## Introduction:
 
 ![Example Network](https://github.com/JoKra1/GENTLE/blob/master/examples/Gentle_Github_Network_Image.jpg)
@@ -12,7 +9,8 @@ GENTLE - The Grapical Ego-Network Tool for Longitudinal Examination, is a fronte
 
 ## Disclaimer
 
-The repository is currently undergoing a much needed overhaul. The API is outdated and documentation is missing. The repository will be updated over the course of the next weeks!
+The repository is currently undergoing a much needed overhaul. The API is outdated and documentation is missing and will be updated in the upcoming weeks. For now
+the best source of information are the inline comments!
 
 A Demo version of Gentle can be tested [here](https://www.gentle.eu/#/).
 Note: The screen where nodes can be placed in boxes might not work on all screens. We do not collect any data during the demo process.

@@ -1,5 +1,5 @@
 {
-  "name": "gentle_react",
+  "name": "GENTLE",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -8,12 +8,13 @@
     "react-bootstrap": "^1.0.0-beta.15",
     "react-dom": "^16.10.2",
     "react-router-dom": "^5.1.2",
-    "react-scripts": "3.2.0",
+    "react-scripts": "^3.4.3",
+    "typescript": "^4.1.5",
     "underscore": "^1.9.1"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "npm install && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

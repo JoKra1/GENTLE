@@ -31,7 +31,7 @@ class NodeButtonComponent extends Component {
    * @returns bool, whether to prepare for next route or not
    */
   checkCondition(event){
-    if(this.props.counter > this.props.max) {
+    if(this.props.counter > (this.props.max - 1)) {
       this.props.callBackButton(this.input.current.value);
       return true
     } else {
@@ -68,7 +68,7 @@ class NodeButtonComponent extends Component {
               <NavLink id="confirm_link"
                        exact to = {this.props.route}
                        onClick={this.checkCondition.bind(this)}>
-                <button id="confirm" >{this.props.counter > this.props.max ? "Confirm & Next":"Confirm"}</button>
+                <button id="confirm" >{this.props.counter > (this.props.max - 1) ? "Confirm & Next":"Confirm"}</button>
               </NavLink>
         </div>
       </div>
