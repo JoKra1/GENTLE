@@ -1,170 +1,85 @@
 # Visualizing Large Dynamic Networks using Gentle
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3604009.svg)](https://doi.org/10.5281/zenodo.3604009)
 
+
 ![Example Networks](https://github.com/JoKra1/GENTLE/blob/dynamic-networks/examples/Gentle_Github_Network_Image.jpg)
 
-GENTLE's main purpose is to handle the interaction between the powerfull data-driven visualization framework d3.js and the popular front-end framework React. As was shortly mentioned in the README in the main branch, those frameworks both come with the capacity for rendering content in the browser and are thus often in conflict. The basic graph component we introduced in the past thus detaches the rendering of the network from the remainder of the web-app. React handles the rest, including both the much needed routing which allows participants to navigate freely between all of the views included in a single study as well as the updates of all necessary information on all relevant views.
+## Introduction:
 
-One of the problems with the Graph component stems from the fact that to determine the position of each node it relies on foci. Each node gravitates towards its focus as soon as the underlying force simulation of d3.js' force module is started. Additionally, nodes remain in place once they have reached the focus point. It is possible to disable the foci driven allocation of the nodes, and we do that for example for views that require participants to drag nodes into boxes to allocate them to some category. In that case d3.js relies on the position of the node itself, which is updated whenever one interacts with a node.
+![Example Network](https://github.com/JoKra1/GENTLE/blob/master/examples/Gentle_Github_Network_Image.jpg)
 
-Why is the foci-based allocation of the nodes a problem you might ask? While it works perfectly for views where the nodes do not need to change there position frequently it limits the creation of large dynamic Networks: If for example one attempts to create a Network that dynamically rearranges the node positions based on connections between them using the standard Graph component the results will be disappointing. The nodes will be pulled towards both their original foci and the nodes they are connected to, which will interfere with a free re-allocation based only on the connections between the nodes.
+GENTLE - The Grapical Ego-Network Tool for Longitudinal Examination, is a frontend framework including multiple modular components designed to allow researchers to easily gather data about social networks. Gentle runs on React and relies on the D3.js library for the data-driven visualisation of individuals involved in a social network. Those individuals are represented as nodes and GENTLE offers various ways to manipulate, interact with, and change the nodes and relationships between them in an easy, playful way.
 
-Intuitively one might want to simple disable the foci-based allocation of the nodes for this component. However, the combination with React would render such a solution unfeasible. Since adding or removing links triggers a callback and requires an update of the state, so that the new information are correctly transferred to all relevant children, the nodes would literally fly all over the screen due to the re-rendering triggered by the update to the state of the components. Eventually, the nodes would settle due to the gravitational constraints applied to the force simulation as well as the constraints provided by the links. However, the visual experience would be a poor one. Additionally, the networks orientation would change after each re-render, which would require participants to re-orientate themselves before they can continue.
+## Disclaimer
 
-While it is possible to prevent React from re-rendering, doing so is a sub-optimal solution in many regards and might also not be supported in the future. Hence, to prevent those complications and to still allow for large re-arranging dynamic networks we reworked the Graph component and also provide an updated implementation of the callback responsible for updating the links for each node. The basic idea is to switch between disabling the foci-based allocation of the node positions, so that the Network can re-arrange itself based on the connections between the nodes and enabling it, to provide stability and stationarity to the Network so that the re-render does not propell nodes over the entire screen. 
+The repository is currently undergoing a much needed overhaul. The API is outdated and documentation is missing. The repository will be updated over the course of the next weeks!
 
-We achieve this by using the callback responsible for inserting/removing links to determine whether a node should be allowed to float arround freely or should remain stationary. Nodes should float around when they are connected to another node. There is one exception to this rule: When a node is initially clicked (when the node is the source of a link) all nodes should remain stationary so that participants can then connect the node to the target node. This initial click to the source node triggers the callback, which then makes all nodes stationary: The current position of each node is used to determine its static position. This has the advantage that nodes currently part of a network are fixed in place, which prevents them flying all over the screen. As soon as the target node is then clicked all nodes currently connected to the network are allowed to float freely again, allowing the network to reorganize itself. Since the nodes were locked in position beforehand, they are not flying in from some distant position on the screen, which again prevents the poor visual experience of a sudden re-render of the network. If a node has no link to begin with or all links to a node are removed the position of the node simply becomes its original focus again.
+A Demo version of Gentle can be tested [here](https://www.gentle.eu/#/).
+Note: The screen where nodes can be placed in boxes might not work on all screens. We do not collect any data during the demo process.
 
-```
-networkNodesCallback = (counter, forceNodes) => {
-    /*
-    Basic Principle:
-       When a source is set below, a snapshot of the network is created
-       and the nodes are fixed using foci. When a link is popped or created
-       the nodes are allowed to float to find their position again.
-    */
-   
-    let links = JSON.parse(JSON.stringify(this.state.links));
-    let nodes = JSON.parse(JSON.stringify(this.state.nodes));
-    let foci = JSON.parse(JSON.stringify(this.state.foci));
-    let source = this.state.source;
-    let hasLink = 0;
-    let linkAt = 0;
+## Content:
 
-    if(source === 0 || counter === 0) {
-      //prevents connections with "You" Node. While the "You" node provides
-      //a visual anchor it is often redundant to require participants to connect
-      //each node to it since it is often explicitly asked to name xy people that you know
-      //which makes those connections redundant.
-      source = -1;
-      this.setState({source:source})
-    } else {
-      if(source === -1) {
-        //initializing source
+GENTLE relies on React which allows the usage of multiple reusable components. GENTLE's core component is the GRAPH component, which handles everything related to D3.js. This includes nodes, links, rectangle boxes, and text fields. The GRAPH component is relatively low-level and allows deeper modifications to the way the nodes behave. Additionally, the GRAPH component handles the conncetion between the data and the visualization, which is the main objective of D3.js. D3 and React are similar in that they both want the control about the DOM, which can lead to conflicts. We decided to seperate the libraries as much as possible and let D3 take control of the dynamic parts of  each rendered view, including the nodes and links. React serves the remaining static content and most importantly provides the foundation for the routing ability. We rely on react-router for routing and this example will cover the HashRouter, other implementations however are possible as well (BrowserRouter offering native URLS).
 
-        for(let i = 0; i < nodes.length; ++i) {
-            nodes[i].floatX = forceNodes[i].x;
-            nodes[i].floatY = forceNodes[i].y;
-            nodes[i].shouldFloat = false;
-        }
-        this.setState({source:counter, nodes:nodes});
-      } else {
-          //"source != -1"
-          if(source !== counter){
-          
-          for(let i = 0; i < links.length; ++i) {
-            //check whether a link exists for a node that needs to be deleted
-            if((links[i].source === source &&
-              links[i].target === counter) ||
-              (links[i].target === source &&
-              links[i].source === counter)) {
-              hasLink = 1;
-              linkAt = i;
-              break;
-            }
-          }
-          if(hasLink) {
-            //has link update link counter for both nodes that were seperated
-            links.splice(linkAt,1);
-              nodes[source].link -= 1;
-              nodes[counter].link -= 1;
-          } else {
-              //has no link thus pushing link
-              links.push({key:(links[links.length - 1] ? links[links.length -1].key + 1:1),
-                          source:source,
-                          target:counter
-                        });
-                nodes[source].link += 1;
-                nodes[counter].link += 1;
+To connect d3 and react we created several higher level components that we plan to extend in the future: NODEBUTTON, NODECATEGORIES, NODE, and NODESLIDER. Those components reference the GRAPH component and display the nodes and potential links between them. However, they also provide static content to interact with those nodes: buttons, sliders, input forms, etc.
 
-          }
-          for(let i = 0; i < nodes.length; ++i) {
-            //Determines wheter a node should float. A node should float
-            //if it is part of a Network. In that case the position of the node
-            //is updated with the last known position in the network as rendered by the
-            //Graph component. Otherwise a node just receives its traditional foci.
-            if(nodes[i].link && i !== 0) {
-              nodes[i].floatX = forceNodes[i].x;
-              nodes[i].floatY = forceNodes[i].y;
-              nodes[i].shouldFloat = true;
-            } else {
-                nodes[i].floatX = foci[i].x;
-                nodes[i].floatY = foci[i].y;
-                nodes[i].shouldFloat = false;
-            }
-          }
+The final important component is the MAIN one. Here we implement the routing as well as the logic of data manipulation. Its representation in the final App also serves as a navigation bar so that users can reach the different views. The data, either created in the app or fetched from a server, will only exist in the state of the MAIN component. We use props to pass the data to the lower components. The reason for this is that if changes occur in one of the lower components, React will make sure that they are reflected in all other components as well, because they all rely on the central state in the MAIN component. This fully utilizes React's typical parent -> child flow of information. To transport information from the children back to the parent component we rely on callback functions. Those are defined in the MAIN component and passed down to the lower components as props. Like regular props, those callback functions can then be used by the lower order components but will conveniently affect the state of the MAIN component, which will lead to the desirded re-render of the lower component.
 
-        }
-        source = -1;
-        this.setState({source:source, links:links, nodes:nodes});
-        
-      }
-      
-    }
-  }
-```
+The callback functions handle the logic and serve as the interface between the user and the underlying data. All components receive a node-callback, which listens to any interaction between the user and a node e.g. through clicking or dragging the node. Some components, like the NODEBUTTON and NODECATEGORY component receive additional callbacks that handle user interaction with the static elements such as buttons or sliders. We will cover the props more extensively in the next section.
 
-The callback thus has to update the link count for each node. Additionally, it uses the link count to update the shouldFloat property of each node, which is then used by the render call to the Graph component in the Main component to determine the final float property of each node.
+## Props:
+We use props to pass data down to the lower components and to receive updates about the manipulation of the data from lower components.
 
-```
-<Route exact path="/Interconnection" component={ () => <NodeComponent nodes = {this.state.nodes.map((node, i) => (
-                                                                                      {key:node.key,
-                                                                                        name:"",
-                                                                                        size:10,
-                                                                                        fixed: false,
-                                                                                        float: (node.shouldFloat ? true:false),
-                                                                                        color: node.color,
-                                                                                        sex: node.sex,
-                                                                                        age: node.name,
-                                                                                        categoryColor: node.categoryColor,
-                                                                                        x:node.floatX,
-                                                                                        y:node.floatY,
-                                                                                        link:node.link,
-                                                                                        floatX:node.floatX,
-                                                                                        floatY:node.floatY
-                                                                                       }
-                                                                              ))}
-                                                                              ...
+- nodes:
+this prop receives the node data from the main component and passes it down to lower-order components. It includes, for example, the coordinates of a node, its size, its name, etc.
 
-```
-The float property is then used by the Graph component to determine whether foci-based allocation should be used for a node or not, exactly in the same way it was already determined for views where nodes could be dragged around.
+- prevNodes:
+corresponds to the last state of the nodes before they were manipulated. prevNodes are stored in the Main component but not in the state since no re-rendering is necessary after they have been updated. See collectHistory for more.
 
-```
-this.force.nodes().forEach(function (d, i) {
-       if ((!d.fixed & !d.float)){
-        d.y += (foci[i].y - d.y) *k;
-        d.x += (foci[i].x - d.x)* k;
-        }
-```
+- fixed:
+used to alter functionality of the nodes. They can then be dragged around by the user and are used in the graph component to handle the specific dragNode callback: provides coordinates of the node after a drag has ended! This is utilized by views where nodes are placed in boxes.
 
-We also made some additional changes to the Graph component itself. It can now receive an addtional boolean float property (not to be confused with the float property for each node). This property is used to decide whether the gravity and linkDistance parameters of the underlying force simulation from d3 should be manipulated or not. For the dynamic network view we increased the gravity slightly to attract nodes to the center of the screen. Additionally, we use the link property of each node we introduced earlier to determine the length of each links. Links to Nodes that have multiple links already receive a higher length value to allow for a better distribution of the network.
+- counter:
+some components receive this prop, which is used in the GRAPH component to indicate which node is currently targeted.
 
-```
-if(this.props.float) {
-        //Manipulate gravity to prevent Nodes from escaping.
-        this.force.gravity(0.25);
-        conditionFoci = 0;
-        //Manipulate charge. Higher charge for those Nodes in the Network
-        //minimizing the chance that links/nodes are overlapping.
-        this.force.charge((d) =>((d.float ? - 1500:-30)))
-        //Manipulate Link Distance for each node individually. Nodes with more
-        //Links receive longer distances to allow for a better distribution of the
-        //network. Those parameters should be tuned depending on the network size.
-        //The link property is determined in the callback.
-        this.force.linkDistance(function(d,i) {
+- links:
+similar to nodes, reflects the connection between two nodes using a source and target attribute as required by d3.
 
-                                  let link = (d.source.link > d.target.link ?
-                                              d.source.link *10: d.target.link *10)
-                                  if (link < 35) {
-                                      return 35;
-                                  } else if (link > 55) {
-                                      return 55;
-                                  } else {
-                                      return link;
-                                  }
-                                })
-      }
-```
+- foci:
+we position nodes using foci points, the force.alpha() value is used to smoothly move nodes to their dedicated foci point.
 
-Finally, in the example uploaded here we added a "You" node. In the callback we prevent links to the "You" node since we believe that its main purpose is to serve as a visual anchor. This is mainly due to the fact that commonly participants are asked to connect the nodes to individuals representing people that participants have some relationship with. If that is the case adding links from each node to the "You" node is not only redundant but can also be perceived to be frustrating. We still include the "You" node because due to the combination of the fact that nodes repell each other if they are not connected and the gravitational forces attracting nodes to the center, the networks will float around the "You" node providing a pleasant visual experience. It is however easy to omit the "You" node entirely or to enable links to the "You" node as described in the comments added to the callback.
+- prevFoci:
+similar to prevNodes. See collectHistory for more.
+
+- categories:
+used by the NODE, NODECATEGORIES, and even the GRAPH component. This prop contains a list of objects that correspond to a specifc category. They are either rendered as buttons in the NODECATEGORIES component later on or as boxes in the NODE component relying on the the GRAPH component. 
+
+- callBackNodes:
+callback for the nodes, the logic of this callback is implemented seperately for each view in the main component. Travels all the way down to the GRAPH component.
+
+- callBackButton:
+callback for static elements of second order components such as NODEBUTTON. Does not travel all the way down to GRAPH. The logic is again implemented for each view.
+
+- sliderUpdate:
+callback for the NODESLIDER component specifically. Connects the slider value to the corresponding node using the counter value.
+
+- collectHistory:
+since our visualization is extremly dynamic we experience a lot of re-renders. We use collectHistory to decide whether we want to render the nodes and their positions(foci) in a static or dynamic way. The functionality is implemented in the GRAPH component. If we would always render the nodes dynamically they would always "fade in" until they reach their foci. However, if we only want to update the color or name of a node we do not need to show any movement. For situations like this we implemented two checks in the GRAPH components that decide whether a node will be rendered statically or fly in dynamically. Those checks rely on the previous state of both the nodes and their corresponding foci.
+
+- textDescription:
+Simple string passed down to second order components to provide an explanation for the users.
+
+## Second-order Components:
+
+- NODESLIDER
+This component renders the GRAPH component as well as a simple slider and a button. When clicked the button will call the callBackButton and return the current counter and slider value to the MAIN component. The slider value is updated on each slider change.
+
+- NODEBUTTON
+This component renders the GRAPH component as well as an input form and a button. When clicked the button will call the callBackButton and return the input value using React's createRef() function.
+
+- NODECATEGORIES
+This component renders the GRAPH component and a flexible number of buttons that are defined in the MAIN component as received in the category prop. The map fuction is used for this.
+
+- NODE
+This component renders only the GRAPH component. Optionally categories are passed down to the GRAPH component. The GRAPH component will then create a rectangle and text for each of the categories.
 
