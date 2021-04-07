@@ -5,7 +5,16 @@ import {
   NavLink,
   HashRouter
 } from "react-router-dom";
- 
+
+/**
+ * Screen design to generate names for nodes/alters.
+ * 
+ * References:
+ * 
+ * For further information on references in React check:
+ * https://reactjs.org/docs/refs-and-the-dom.html
+ */
+
 class NodeButtonComponent extends Component {
 
   constructor(props){
@@ -13,8 +22,14 @@ class NodeButtonComponent extends Component {
     this.state = {counter:0};
     this.input = React.createRef();
     this.counter = 0;
+    
   }
 
+  /**
+   * Checks whether enough nodes have been generated yet.
+   * @param {*} event 
+   * @returns bool, whether to prepare for next route or not
+   */
   checkCondition(event){
     if(this.props.counter > this.props.max) {
       this.props.callBackButton(this.input.current.value);
@@ -26,9 +41,9 @@ class NodeButtonComponent extends Component {
 
   }
 
+
   componentDidMount(){
     this.setState(this.state);
-
   }
 
   render() {
@@ -39,10 +54,22 @@ class NodeButtonComponent extends Component {
         <div className="textBox">
           <p>{this.props.textDescription}</p>
         </div>
-        <Graph counter={this.props.counter} nodes={this.props.nodes} prevNodes = {this.props.prevNodes} links={this.props.links} foci={this.props.foci} prevFoci= {this.props.prevFoci} callBack={this.props.callBackNodes} collectHistory = {this.props.collectHistory}/>
+        <Graph counter={this.props.counter}
+               nodes={this.props.nodes}
+               prevNodes = {this.props.prevNodes}
+               links={this.props.links}
+               foci={this.props.foci}
+               prevFoci= {this.props.prevFoci}
+               callBack={this.props.callBackNodes}
+               collectHistory = {this.props.collectHistory}/>
+
         <div className="container" id="userInputStd">
               <input id="usr" type="text" placeholder="Name" ref={this.input}/>
-              <NavLink exact to = {this.props.route} onClick={this.checkCondition.bind(this)}><button id="confirm" >{this.props.counter > this.props.max ? "Confirm & Next":"Confirm"}</button></NavLink>
+              <NavLink id="confirm_link"
+                       exact to = {this.props.route}
+                       onClick={this.checkCondition.bind(this)}>
+                <button id="confirm" >{this.props.counter > this.props.max ? "Confirm & Next":"Confirm"}</button>
+              </NavLink>
         </div>
       </div>
       </HashRouter>
