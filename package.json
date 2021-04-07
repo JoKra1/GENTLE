@@ -3,11 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "body-parser": "^1.19.0",
     "d3": "^3.5.17",
-    "express": "^4.17.1",
-    "jquery": "^3.4.1",
-    "monk": "^7.1.1",
     "react": "^16.10.2",
     "react-bootstrap": "^1.0.0-beta.15",
     "react-dom": "^16.10.2",
@@ -35,5 +31,6 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "proxy": "http://localhost:8080/"
 }

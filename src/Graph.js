@@ -1,24 +1,3 @@
-/* 
-Copyright 2019 J.Krause B.F.Jeronimus>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-and associated documentation files (the "Software"), to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge, publish, distribute,
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-*/
-
 import React, { Component } from "react";
 import * as d3 from 'd3';
 import ReactDOM from "react-dom";
@@ -36,7 +15,9 @@ class Graph extends Component{
     super(props);
     this.force = d3.layout.force()
     .charge(-1)
+    .gravity(0.01)
     .linkDistance(150)
+    .linkStrength(1)
     .size([width, height]);
     this.conditionNode = 1;
     this.force.drag()
@@ -53,18 +34,25 @@ class Graph extends Component{
   }
 
   callback = (d, _this) => {
+    let nodes = JSON.parse(JSON.stringify(this.force.nodes()));
     this.force.alpha(0.2);
-    this.props.callBack(d.key);
+    //extension of callback compared to static network component because
+    //information about the nodes is required.
+    this.props.callBack(d.key, nodes);
   }
   
   enterCycleNodes = (v3d) => {
     //enter cycle d3 for nodes
     this.force.start();
-
-    v3d.classed('node', true)
-        .call(this.force.drag)
-        .style("opacity", (d) => (d.key === this.props.counter ? 0.65: 1)); //current node has 0.65 opacity
-  
+    if(this.props.opac) {
+      v3d.classed('node', true)
+      .call(this.force.drag)
+      .style("opacity", (d) => (d.x/1000 > 0.1? d.x/1000: 0.1)); //current node has 0.65 opacity
+    } else{
+        v3d.classed('node', true)
+            .call(this.force.drag)
+            .style("opacity", (d) => (d.key === this.props.counter ? 0.65: 1)); //current node has 0.65 opacity
+    }
     v3d.append("circle")
         .attr("class", "Node_center")
         .attr("id", (d) => d.key)
@@ -79,9 +67,9 @@ class Graph extends Component{
     v3d.append("circle")
         .attr("class", "Node_rel")
         .attr("id", (d) => 'rel_' + d.key)
-        .attr("r", (d) => d.size +5)
+        .attr("r", (d) => (d.size == 10 ? d.size +1 : d.size +5))
         .style("stroke", (d) => d.categoryColor)
-        .style("stroke-width","1.5%")
+        .style("stroke-width",(d) => (d.size == 10 ? "0.5%":"1.5%"))
         .style("fill","none");
   
   
@@ -95,8 +83,8 @@ class Graph extends Component{
     v3d.append("text") 
         .attr("class", "float_text")
         .attr("text-anchor", "middle")
-        .attr("dx", (window.innerWidth < 700 ? "1em": "5em"))
-        .attr("dy", (window.innerWidth < 700 ? "1.5em": "5em"))
+        .attr("dx", (window.innerWidth < 700 ? "1em": "1.25em"))
+        .attr("dy", (window.innerWidth < 700 ? "1.5em": "1.25em"))
         .attr("pointer-events", "none")
         .text((d) => d.age);
 
@@ -111,12 +99,26 @@ class Graph extends Component{
   updateVirtualD3 = (v3d, foci) => {
     //update Node position determined by foci
     var k = this.force.alpha();
-    this.force.nodes().forEach(function (d, i) {
 
-       if (!d.fixed){
+    this.force.nodes().forEach(function (d, i) {
+       if ((!d.fixed & !d.float)){
         d.y += (foci[i].y - d.y) *k;
         d.x += (foci[i].x - d.x)* k;
         }
+
+        
+        if(d.x < 0) {
+          d.x = 35;
+        } else if (d.x > 1077) {
+          d.x = 1077-25;
+        }
+
+        if(d.y < 0) {
+          d.y = 35;
+        } else if (d.y > 1077) {
+          d.y = 1077 - 25;
+        }
+        
       });
   
     v3d.selectAll('.node')
@@ -136,7 +138,7 @@ class Graph extends Component{
   
   
   componentDidMount() {
-
+    //console.log("this.props.links: ", this.props.links);
     this.virtualD3 = d3.select(ReactDOM.findDOMNode(this.refs.graph));
     this.force.on('tick', (e) => {
       // d3 handles rendering
@@ -148,6 +150,7 @@ class Graph extends Component{
 
   componentDidUpdate() {
     //Props need to remain Pure in React, Force would manipulate props, thus deep copy.
+    //console.log(this.props.nodes, this.props.links);
     let nodes = JSON.parse(JSON.stringify(this.props.nodes));
     let links = JSON.parse(JSON.stringify(this.props.links));
     let foci = JSON.parse(JSON.stringify(this.props.foci));
@@ -179,7 +182,6 @@ class Graph extends Component{
 
       vd3Nodes.enter().append('g').call(this.enterCycleNodes);
       vd3Nodes.exit().remove();
-
       var vd3Links = this.virtualD3.selectAll('.link')
         .data(links, (link) => link.key);
       vd3Links.enter().insert('line', '.node').call(this.enterCycleLinks);
@@ -203,11 +205,37 @@ class Graph extends Component{
   
       }
 
+      if(this.props.float) {
+        //Manipulate gravity to prevent Nodes from escaping.
+        this.force.gravity(0.25);
+        conditionFoci = 0;
+        //Manipulate charge. Higher charge for those Nodes in the Network
+        //minimizing the chance that links/nodes are overlapping.
+        this.force.charge((d) =>((d.float ? - 1500:-30)))
+        //Manipulate Link Distance for each node individually. Nodes with more
+        //Links receive longer distances to allow for a better distribution of the
+        //network. Those parameters should be tuned depending on the network size.
+        //The link property is determined in the callback.
+        this.force.linkDistance(function(d,i) {
+
+                                  let link = (d.source.link > d.target.link ?
+                                              d.source.link *10: d.target.link *10)
+                                  if (link < 35) {
+                                      return 35;
+                                  } else if (link > 55) {
+                                      return 55;
+                                  } else {
+                                      return link;
+                                  }
+                                })
+      }
+
       this.props.collectHistory(nodes, foci);
       this.force.nodes(nodes).links(links);
 
       if(!conditionFoci) {
         for(let i = this.force.alpha(); i > 0.005; i = i - 0.001) {
+
           //static rendering prevents "fading in"
           this.virtualD3.call(this.updateVirtualD3,foci);
         }
@@ -215,7 +243,6 @@ class Graph extends Component{
         this.virtualD3.call(this.updateVirtualD3,foci);
         
       }
-
       this.force.start();
 
     } else{
