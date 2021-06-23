@@ -9,7 +9,7 @@ import NodeComponent from"./NodeComponent";
 import NodeSliderComponent from "./NodeSliderComponent";
 import NodeCategoriesComponent from "./NodeCategoriesComponent";
 import { Navbar, Nav, NavItem} from 'react-bootstrap';
-
+import $ from "jquery";
 
 /**
  * Constants to detect mobile users, and to calculate the
@@ -22,6 +22,7 @@ const svgWidth = (window.innerWidth > 1140? 1140:window.innerWidth) - 60;
 const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : false) // to detect small displays, requiring different render
 const nodeRadius = ((mobile ? 25:35) + 0.015 * svgWidth);
 const avbWidth = svgWidth - 2 * nodeRadius;
+const URL = "/ajax";
 
 /**
  * Main class, acting as the router and logical interface between
@@ -30,7 +31,7 @@ const avbWidth = svgWidth - 2 * nodeRadius;
  * Here callbacks are defined and passed down to the different components.
  * 
  * References:
- * Screen layouts and layout calculations are partially inspired from:
+ * Screen layouts and layout calculations are partially inspired from and based on:
  * http://www.tobiasstark.nl/GENSI/GENSI.htm
  * 
  * 
@@ -47,7 +48,8 @@ class Main extends Component {
    */
   constructor(props){
     super(props);
-    this.ID = "Test-User";
+    this.ID = this.props.ID || "TestUser";
+    console.log(this.ID);
     this.state = {nodes:[{key:0,name:"You",categoryColor:"green",
                           color:"green",size:10,x:svgWidth/2,y:svgHeight/2,
                           floatX:svgWidth/2,floatY:svgHeight/2,fixed:false,
@@ -139,6 +141,20 @@ class Main extends Component {
       
     }
     return nodes;
+  }
+
+  // Data transfer
+  transferData = () => {
+    $.ajax({url:URL,
+                method:"Post",
+                data:{"ID":this.state.id,
+                    "data":JSON.stringify({nodes:this.state.nodes,links:this.state.links})},
+                success: function(ID){
+                  console.log("Success.")
+                },
+                error: function(){
+                    alert("Failure")
+                }})
   }
 
   //Callback functions
@@ -246,6 +262,7 @@ class Main extends Component {
           })
           
           // Push state
+          this.transferData();
           this.setState({nodes:nodes,foci:foci,counter:counter + 1});
           
           
@@ -278,6 +295,7 @@ class Main extends Component {
         nodes[counter].sex = "male";
         nodes[counter].color = "blue";
     }
+    this.transferData();
     this.setState({nodes:nodes});
   }
 
@@ -293,6 +311,7 @@ class Main extends Component {
           value = parseInt(this.state.nodes[counter][key]);
       }
     }
+    this.transferData();
     return value;
   }
 
@@ -309,6 +328,7 @@ class Main extends Component {
     } else {
         let nodes = JSON.parse(JSON.stringify(this.state.nodes));
         nodes[counter][key] = value;
+        this.transferData();
         this.setState({nodes:nodes, counter: counter + 1, correction: 0});
     }
   }
@@ -330,6 +350,7 @@ class Main extends Component {
         let nodes = JSON.parse(JSON.stringify(this.state.nodes));
         nodes[counter][key] = category;
         nodes[counter][keyColor] = categories[id].color;
+        this.transferData();
         this.setState({nodes:nodes, counter: counter + 1, correction: 0});
     }
   }
@@ -351,7 +372,7 @@ class Main extends Component {
     nodes[id].fixedPosX = x;
     //nodes[id].fixedPosY = y;
     nodes[id][key] = value;
-
+    this.transferData();
     this.setState({nodes:nodes});
   }
 
@@ -448,7 +469,7 @@ class Main extends Component {
         }
         // reset source
         source = -1;
-        
+        this.transferData();
         this.setState({source:source,nodes:nodes,links:links,counter:counter + 1});
       }
     }

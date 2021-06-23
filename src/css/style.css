@@ -149,6 +149,27 @@ body {
 	margin:0.5rem auto 1.0rem auto;
 }
 
+.loginForm {
+	display: block;
+	width: 50%;
+    margin: auto;
+    padding: 50px;
+    background: #CC2234;
+	text-align: center;
+	border: 1px solid #CC2234;
+	border-radius: .55rem;
+	margin-top: 50px;
+}
+
+.loginInput{
+	display: block;
+	width: 90%;
+	margin: 15px;
+	padding: 5px;
+	border: 1px solid grey;
+	border-radius: .25rem;
+}
+
 @media screen and (min-width: 601px){
 	.node_text {
 		font-size: 100%;
@@ -172,5 +193,10 @@ body {
 	}
 	.slider {
 		width: 100%;
+	}
+
+	.loginForm {
+		width: 100%;
+		padding: 15px;
 	}
 }

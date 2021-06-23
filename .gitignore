@@ -34,11 +34,7 @@ yarn-error.log*
 # db export scripts
 export*.js
 
-# old docker-compose
-docker-compose*
-
 # environment file
 .env
 build
 package-lock.json
-src/css/bootstrap.css

@@ -1,0 +1,30 @@
+version: '3.5'
+
+services:
+    gentle_app:
+        container_name: gentle_app
+        build:
+            context: .
+            dockerfile: Dockerfile.gentle
+        ports:
+          - "3002:3002"
+        networks:
+          - gentle-network
+        links:
+          - gentle_db
+        depends_on:
+          - gentle_db
+    gentle_db:
+        container_name: gentle_db
+        image: mongo:4.4.0-bionic
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=super_admin
+            - MONGO_INITDB_ROOT_PASSWORD=DbPassword
+        networks:
+            - gentle-network
+        command: mongod --port 27017 --dbpath /data/db
+        ports: 
+            - "27017:27017"
+
+networks:
+    gentle-network:
