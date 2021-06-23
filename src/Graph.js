@@ -5,6 +5,7 @@ import {isEqual} from 'underscore';
 
 var width = (window.innerWidth > 1140? 1140:window.innerWidth) - 60;
 var height = window.innerHeight *0.75;
+const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : false)
 
 /**
  * Graph class handling dynamic and static rendering for networks.
@@ -73,7 +74,8 @@ var height = window.innerHeight *0.75;
    * Enter cycle for nodes (see d3.js docs)
    * @param {*} v3d virtual dom object
    */
-  enterCycleNodes = (v3d) => {
+   enterCycleNodes = (v3d) => {
+    //console.log(this.props.opac);
     this.force.start();
     if(this.props.opac == "static") {
       v3d.classed('node', true)
@@ -82,11 +84,15 @@ var height = window.innerHeight *0.75;
     } else if(this.props.opac == "dynamic") {
       v3d.classed('node', true)
       .call(this.force.drag)
-      .style("opacity", (d) => (d.x/width + 0.1)); //all nodes have 0.7 opacity
+      .style("opacity", (d) => (d.x/width + 0.1)); //opacity depends on x coordinate
+    } else if(this.props.opac == "conditional") {
+      v3d.classed('node', true)
+      .call(this.force.drag)
+      .style("opacity", (d) => (d.opac ? 1.0:0.25)); //all active nodes have an opac of 1
     } else{
         v3d.classed('node', true)
-            .call(this.force.drag)
-            .style("opacity", (d) => (d.key === this.props.counter ? 0.65: 1)); //current node has 0.65 opacity
+        .call(this.force.drag)
+        .style("opacity", (d) => (d.key === this.props.counter ? 0.65: 1)); //current node has 0.65 opacity
     }
 
     v3d.append("circle")
@@ -119,8 +125,8 @@ var height = window.innerHeight *0.75;
     v3d.append("text") 
         .attr("class", "float_text")
         .attr("text-anchor", "middle")
-        .attr("dx", (window.innerWidth < 700 ? "1em": "1.25em"))
-        .attr("dy", (window.innerWidth < 700 ? "1.5em": "1.25em"))
+        .attr("dx", (mobile ? "1em": "1.25em"))
+        .attr("dy", (mobile ? "1.5em": "1.25em"))
         .attr("pointer-events", "none")
         .text((d) => d.age);
 
@@ -147,25 +153,31 @@ var height = window.innerHeight *0.75;
     var k = this.force.alpha();
 
     this.force.nodes().forEach(function (d, i) {
-       if ((!d.fixed & !d.float)){
-        d.y += (foci[i].y - d.y) *k;
-        d.x += (foci[i].x - d.x)* k;
-        }
+      if ((!d.fixed & !d.float)){
+       d.y += (foci[i].y - d.y) *k;
+       d.x += (foci[i].x - d.x)* k;
+       }
 
-        
-        if(d.x < 0) {
-          d.x = 35;
-        } else if (d.x > width) {
-          d.x = width-35;
-        }
+       /**
+        * Push-back boundary set-up. Prevents nodes from being
+        * pushed outside of the screen.
+        */
+       let s_width = (d.size == 10 ? 0.005:0.015) * width;
+       let size = (d.size == 10 ? d.size +1 : d.size +5) + s_width;
+       
+       if(d.x < 0) {
+         d.x = size;
+       } else if (d.x > width) {
+         d.x = width-size;
+       }
 
-        if(d.y < 0) {
-          d.y = 35;
-        } else if (d.y > height) {
-          d.y = height - 35;
-        }
-        
-      });
+       if(d.y < 0) {
+         d.y = size;
+       } else if (d.y > height) {
+         d.y = height - size;
+       }
+       
+     });
   
     v3d.selectAll('.node')
             .attr("cx", (d) => d.x)
@@ -180,6 +192,25 @@ var height = window.innerHeight *0.75;
             .attr("x2", (d) => d.target.x)
             .attr("y2", (d) => d.target.y);
   };
+
+  /**
+   * The static render is based on the principle outlined
+   * in the link below. However, since the .tick method is
+   * overwritten below, the network needs to be told explicitly
+   * how it should advance.
+   * @param {*} foci foci of nodes
+   * 
+   * See:
+   * https://stackoverflow.com/questions/47510853/how-to-disable-animation-in-a-force-directed-graph/47522074#47522074
+   * and:
+   * https://github.com/d3/d3/issues/1519
+   */
+  staticRender(foci) {
+    for(let i = 0; i < 100; i ++) {
+      //static rendering prevents "fading in"
+      this.virtualD3.call(this.updateVirtualD3,foci);
+    }
+  }
   
   
   /**
@@ -192,6 +223,24 @@ var height = window.innerHeight *0.75;
     }); 
   }
 
+  /**
+   * Checks whether two sequences of objects are equal.
+   */
+  areSequenceObjectsUnEqual(seq1,seq2) {
+    if(seq1.length !== seq2.length) {
+      //simple test for equality
+      return true;
+    } else {
+        for(let i = 0; i < seq1.length; ++i) {
+          //more elaborate test
+          if(!isEqual(seq1[i], seq2[i])) {
+            return true;
+          }
+        }
+
+    }
+    return false;
+  }
 
   /**
    * Decision method for rendering. Renders nodes statically (cools down force in network
@@ -205,22 +254,8 @@ var height = window.innerHeight *0.75;
     let nodes = JSON.parse(JSON.stringify(this.props.nodes));
     let links = JSON.parse(JSON.stringify(this.props.links));
     let foci = JSON.parse(JSON.stringify(this.props.foci));
-    let conditionNode = 0;
-    let conditionFoci = 0;
+    let conditionNode = this.areSequenceObjectsUnEqual(this.props.prevNodes,this.props.nodes);
 
-    if(this.props.prevNodes.length !== this.props.nodes.length) {
-      //simple test for equality
-      conditionNode = 1;
-    } else {
-        for(let i = 0; i < this.props.nodes.length; ++i) {
-          //more elaborate test
-          if(!isEqual(this.props.prevNodes[i], nodes[i])) {
-            conditionNode = 1;
-            break;
-          }
-        }
-
-    }
     // something about the nodes is in-equal - might be data or position
     if(conditionNode) {
       this.virtualD3 = d3.select(ReactDOM.findDOMNode(this.graphRef));
@@ -228,7 +263,7 @@ var height = window.innerHeight *0.75;
       var vd3Nodes = this.virtualD3.selectAll('.node')
         .data(nodes, (node) => node.key);
       
-      //Update & Enter
+      //Update & Enter (see: https://www.d3indepth.com/enterexit/ for explanations!)
       vd3Nodes.select(".node_text").text((d) => d.name);
       vd3Nodes.select(".Node").style("fill", (d) => d.color);
       vd3Nodes.select(".Node_rel").style("stroke", (d) => d.categoryColor);
@@ -243,21 +278,7 @@ var height = window.innerHeight *0.75;
 
       //If data changed but positions remained the same use static rendering as well
       //to prevent "fading in"
-
-      if(this.props.prevFoci.length !== foci.length) {
-        //simple test for equality
-        conditionFoci = 1;
-      } else {
-        for(let i = 0; i < foci.length; ++i) {
-          //more elaborate test
-          if(!isEqual(this.props.prevFoci[i], foci[i])) {
-
-            conditionFoci = 1;
-            break;
-          }
-        }
-  
-      }
+      let conditionFoci = this.areSequenceObjectsUnEqual(this.props.prevFoci,this.props.foci);
 
       // For network connection screen we need to further diverge from the static/dynamic distinction.
       // The following lines use the float property set by network callback to
@@ -266,37 +287,23 @@ var height = window.innerHeight *0.75;
       // since for the network screen we always want a static render first
 
       if(this.props.float) {
-        this.force.gravity(0.25);
+        this.force.gravity(0.075);
         conditionFoci = 0;
-        if (window.innerWidth > 500) {
-          this.force.charge((d) =>((d.float ? -1500:-30)))
-        } else {
-          this.force.charge((d) =>((d.float ? -450:-30)))
-        }
+        this.force.charge((d) =>(d.float ? -500:-30));
+
         this.force.linkDistance(function(d,i) {
-                                  if (window.innerWidth > 500) {
-                                    let link = (d.source.link > d.target.link ?
-                                      d.source.link *10: d.target.link *10)
-                                    if (link < 35) {
-                                        return 35;
-                                    } else if (link > 55) {
-                                        return 55;
-                                    } else {
-                                        return link;
-                                    }
+
+                                  let link = (d.source.link > d.target.link ?
+                                    d.source.link *10: d.target.link *10)
+                                  if (link < 35) {
+                                      return 35;
+                                  } else if (link > 55) {
+                                      return 55;
                                   } else {
-                                    let link = (d.source.link > d.target.link ?
-                                      d.source.link *3: d.target.link *3)
-                                    if (link < 5) {
-                                        return 5;
-                                    } else if (link > 10) {
-                                        return 10;
-                                    } else {
-                                        return link;
-                                    }
+                                      return link;
                                   }
-                                  
-                                })
+                              
+                                });
       }
 
       this.props.collectHistory(nodes, foci);
@@ -305,11 +312,7 @@ var height = window.innerHeight *0.75;
       // cool down network sufficiently to prevent fading in == static rendering
       // will always take place on the network connection screen.
       if(!conditionFoci) {
-        for(let i = this.force.alpha(); i > 0.005; i = i - 0.001) {
-
-          //static rendering prevents "fading in"
-          this.virtualD3.call(this.updateVirtualD3,foci);
-        }
+        this.staticRender(foci);
       } else{
         this.virtualD3.call(this.updateVirtualD3,foci);
         
@@ -329,12 +332,9 @@ var height = window.innerHeight *0.75;
 
       // cool down network sufficiently to prevent fading in == static rendering
       // will always take place on the network connection screen.
-      for(let i = this.force.alpha(); i > 0.005; i = i - 0.001) {
-        //static rendering prevents "fading in"
-        this.virtualD3.call(this.updateVirtualD3,foci);
-      }
+      this.staticRender(foci);
       this.force.start();
-      this.force.alpha(0.01); //stop unnecessary calculations
+      this.force.alpha(0.05); //stop unnecessary calculations
       
     }
 
