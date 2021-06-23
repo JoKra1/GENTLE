@@ -20,6 +20,8 @@ import { Navbar, Nav, NavItem} from 'react-bootstrap';
 const svgHeight = window.innerHeight * 0.75;
 const svgWidth = (window.innerWidth > 1140? 1140:window.innerWidth) - 60;
 const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : false) // to detect small displays, requiring different render
+const nodeRadius = ((mobile ? 25:35) + 0.015 * svgWidth);
+const avbWidth = svgWidth - 2 * nodeRadius;
 
 /**
  * Main class, acting as the router and logical interface between
@@ -222,10 +224,10 @@ class Main extends Component {
             age:"",
             category:"",
             categoryColor:"white",
-            fixedPosX:250,
-            fixedPosY:250,
-            closeness:-1,
-            liking:-1,
+            fixedPosX:svgWidth/2,
+            fixedPosY:svgHeight*0.1 + (Math.random() * (svgHeight * 0.7)),
+            continuous1:-1,
+            continuous2:-1,
             x:250,
             y:250,
             floatX:0,
@@ -262,6 +264,10 @@ class Main extends Component {
 
   }
 
+  /**
+   * This should probably also be converted to a generic method
+   * for color changing. Need to get back to this.
+   */
   changeSexNodeCallback = (counter) => {
     let nodes = this.state.nodes;
 
@@ -275,69 +281,76 @@ class Main extends Component {
     this.setState({nodes:nodes});
   }
 
-
-  sliderUpdateValue = (counter) => {
+  /**
+   * Determines value displayed next to node on slider screen
+   * @param {string} key key of node property
+   * @param {number} counter that identifies node
+   */
+  sliderUpdateValue = (key,counter) => {
     let value = 1;
     if(counter < this.state.nodes.length) {
-      if(this.state.nodes[counter].age !== ""){
-          value = parseInt(this.state.nodes[counter].age);
+      if(this.state.nodes[counter][key] !== ""){
+          value = parseInt(this.state.nodes[counter][key]);
       }
     }
     return value;
   }
 
-
-  changeAgeButtonCallback = (counter, age) => {
+  /**
+   * Changes specific slider key of a node
+   * @param {string} key key of node property
+   * @param {number} counter that identifies node
+   * @param {number} value
+   */
+  changeSliderButtonCallback = (key, counter, value) => {
     //updates background associated with node
     if(counter >= this.state.nodes.length) {
       alert("You provided the age for every person, thank you. Click on a node to change their age!")
     } else {
         let nodes = JSON.parse(JSON.stringify(this.state.nodes));
-        nodes[counter].age = age;
+        nodes[counter][key] = value;
         this.setState({nodes:nodes, counter: counter + 1, correction: 0});
     }
   }
 
   /**
-   * Changes category of a node
-   * @param {number} counter 
-   * @param {number} id 
-   * @param {string} category 
+   * Changes specific category key of a node
+   * @param {string} key key of node property
+   * @param {string} keyColor color key of node property
+   * @param {object} categories object containing categories and colors  
+   * @param {number} counter that identifies node
+   * @param {number} id of category
+   * @param {string} category category name
    */
-  changeCategoryButtonCallback = (counter, id, category) => {
+  changeCategoryButtonCallback = (key, keyColor, categories, counter, id, category) => {
     //updates background associated with node
     if(counter >= this.state.nodes.length) {
       alert("You provided the category for every person, thank you. Click on a node to change their category!")
     } else {
         let nodes = JSON.parse(JSON.stringify(this.state.nodes));
-        nodes[counter].category = category;
-        nodes[counter].categoryColor = this.categories[id].color;
+        nodes[counter][key] = category;
+        nodes[counter][keyColor] = categories[id].color;
         this.setState({nodes:nodes, counter: counter + 1, correction: 0});
     }
   }
 
-
-  placeClosenessDragCallback = (id, x, y) => {
+  /**
+   * Changes specific continuous key of a node
+   * @param {string} key key of node property
+   * @param {number} id of node
+   * @param {number} x coordinate
+   * @param {number} y coordinate
+   */
+  continuousGenericCallback = (key, id, x, y) => {
     //collects final placement when drag has ended
-    
-    let closeness = Math.abs(x - Math.trunc(svgWidth*0.5));
+    let inner_dist = ((mobile ? 25:35) + 0.015 * svgWidth);
+    let avb_width = svgWidth - 2 * inner_dist;
+    let value = (x - inner_dist)/avb_width;
+    //console.log(pos);
     let nodes = this.state.nodes;
     nodes[id].fixedPosX = x;
-    nodes[id].fixedPosY = y;
-    nodes[id].closeness = closeness;
-
-    this.setState({nodes:nodes});
-  }
-
-
-  placeLikingDragCallback = (id, x, y) => {
-    //collects final placement when drag has ended
-    
-    let liking = x/Math.trunc(svgWidth);
-    let nodes = this.state.nodes;
-    nodes[id].fixedPosX = x;
-    nodes[id].fixedPosY = y;
-    nodes[id].liking = liking;
+    //nodes[id].fixedPosY = y;
+    nodes[id][key] = value;
 
     this.setState({nodes:nodes});
   }
@@ -524,12 +537,12 @@ class Main extends Component {
                                                                          route = {"/Categories"}
                                                                          prevNodes = {this.prevNodes}
                                                                          counter = {this.determineCounterReturn("age","")}
-                                                                         sliderUpdateValue = {this.sliderUpdateValue(this.determineCounterReturn("age",""))}
+                                                                         sliderUpdateValue = {this.sliderUpdateValue("age",this.determineCounterReturn("age",""))}
                                                                          links = {[]}
                                                                          foci = {this.state.foci.slice(1)}
                                                                          prevFoci= {this.prevFoci}
                                                                          callBackNodes = {this.genericNodesCallback.bind(this)}
-                                                                         callBackButton = {this.changeAgeButtonCallback.bind(this)}
+                                                                         callBackButton = {[this.changeSliderButtonCallback.bind(this),"age"]}
                                                                          collectHistory = {this.collectHistory.bind(this)}
                                                                          textDescription = {"3) Assign a numerical value, for example the age of participants."}/> }/>
             
@@ -542,12 +555,12 @@ class Main extends Component {
                                                                          foci = {this.state.foci.slice(1)}
                                                                          prevFoci= {this.prevFoci}
                                                                          callBackNodes = {this.genericNodesCallback.bind(this)}
-                                                                         callBackButton = {this.changeCategoryButtonCallback.bind(this)}
+                                                                         callBackButton = {[this.changeCategoryButtonCallback.bind(this),"category","categoryColor",this.categories]}
                                                                          collectHistory = {this.collectHistory.bind(this)}
                                                                          textDescription = {"4) Click on the buttons to assign a category to a node."}/> }/>
 
             <Route exact path="/Continuous1" component={ () => <NodeComponent   fixed = {1}
-                                                                              opac = {"static"}
+                                                                              opac = {"dynamic"}
                                                                               nodes = {this.state.nodes.slice(1).map((node, i) => (
                                                                                       {key:node.key,
                                                                                         name:node.name,
@@ -555,9 +568,9 @@ class Main extends Component {
                                                                                         fixed: true,
                                                                                         color: node.color,
                                                                                         sex: node.sex,
-                                                                                        age: node.age,
+                                                                                        age: (node.continuous1 != -1 ? node.continuous1.toFixed(2):0.5),
                                                                                         categoryColor: node.categoryColor,
-                                                                                        x:node.fixedPosX,
+                                                                                        x:(node.continuous1 != -1 ? node.continuous1*avbWidth + nodeRadius:svgWidth/2),
                                                                                         y:node.fixedPosY
                                                                                        }
                                                                               ))}
@@ -568,7 +581,7 @@ class Main extends Component {
                                                                               foci = {this.state.foci.slice(1)}
                                                                               prevFoci= {this.prevFoci}
                                                                               categories= {this.seperator}
-                                                                              callBackNodes = {this.placeClosenessDragCallback.bind(this)}
+                                                                              callBackNodes = {[this.continuousGenericCallback.bind(this),"continuous1"]}
                                                                               collectHistory = {this.collectHistory.bind(this)}
                                                                               textDescription = {"5) Move nodes closer to the line to indicate proximity. Useful to measure continuous relative scales."}/> }/>
 
@@ -582,9 +595,9 @@ class Main extends Component {
                                                                                         fixed: true,
                                                                                         color: node.color,
                                                                                         sex: node.sex,
-                                                                                        age: node.age,
+                                                                                        age: (node.continuous2 != -1 ? node.continuous2.toFixed(2):0.5),
                                                                                         categoryColor: node.categoryColor,
-                                                                                        x:node.fixedPosX,
+                                                                                        x:(node.continuous2 != -1 ? node.continuous2*avbWidth + nodeRadius:svgWidth/2),
                                                                                         y:node.fixedPosY
                                                                                        }
                                                                               ))}
@@ -594,7 +607,7 @@ class Main extends Component {
                                                                               links = {[]}
                                                                               foci = {this.state.foci.slice(1)}
                                                                               prevFoci= {this.prevFoci}
-                                                                              callBackNodes = {this.placeLikingDragCallback.bind(this)}
+                                                                              callBackNodes = {[this.continuousGenericCallback.bind(this),"continuous2"]}
                                                                               collectHistory = {this.collectHistory.bind(this)}
                                                                               textDescription = {"6) Move nodes closer to the right to indicate proximity. Useful to measure continuous relative scales."}/> }/>
 

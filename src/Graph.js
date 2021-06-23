@@ -48,13 +48,15 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
   }
 
   /**
-   * Handles callbacks for views that allow for node dragging into boxes (desktop only)
+   * Handles callbacks for views that allow for node dragging
    * @param {event} e d3.js event
    */
   dragCallBack = (e) => {
     //for fixed nodes
     if(this.props.fixed) {
-      this.props.callBack(e.key, e.x, e.y);
+      let callbackMethod = this.props.callBack[0];
+      let callbackKey = this.props.callBack[1];
+      callbackMethod(callbackKey,e.key, e.x, e.y);
     }
 
   }
@@ -62,9 +64,8 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
   /**
    * Handles all remaining callback cases (clicking, connecting, etc.)
    * @param {node} d data object of a node
-   * @param {this} _this 
    */
-  callback = (d, _this) => {
+  callback = (d) => {
     let nodes = JSON.parse(JSON.stringify(this.force.nodes()));
     this.force.alpha(0.2);
     this.props.callBack(d.key, nodes);
@@ -102,8 +103,8 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
         .style("fill", (d) => d.color)
         //.on("touchstart", function(d){d3.event.preventDefault(); console.log(d)})
         .on("touchstart", (d) => {d3.event.preventDefault();})
-        .on("touchend", (d) => {this.callback(d,this);})
-        .on("click", (d) => {this.callback(d,this);});
+        .on("touchend", (d) => {this.callback(d);})
+        .on("click", (d) => {this.callback(d);});
         
   
     v3d.append("circle")

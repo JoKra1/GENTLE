@@ -36,12 +36,14 @@ class NodeSliderComponent extends Component {
   }
 
   checkCondition(event){
+    let callbackMethod = this.props.callBackButton[0];
+    let callbackKey = this.props.callBackButton[1];
     if(this.props.counter > (this.props.nodes.length - 1)) {
-      this.props.callBackButton(this.props.counter,this.state.value);
+      callbackMethod(callbackKey,this.props.counter,this.state.value);
       return true
     } else {
       event.preventDefault();
-      this.props.callBackButton(this.props.counter,this.state.value);
+      callbackMethod(callbackKey,this.props.counter,this.state.value);
     }
 
   }

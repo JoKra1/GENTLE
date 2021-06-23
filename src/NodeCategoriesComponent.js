@@ -26,7 +26,11 @@ class NodeCategoriesComponent extends Component {
   }
 
   updateCounter = (id, text) => {
-    this.props.callBackButton(this.props.counter, id, text);
+    let callbackMethod = this.props.callBackButton[0];
+    let callbackKey = this.props.callBackButton[1];
+    let callbackKeyColor = this.props.callBackButton[2];
+    let categories = this.props.callBackButton[3];
+    callbackMethod(callbackKey,callbackKeyColor,categories,this.props.counter, id, text);
 }
 
 
