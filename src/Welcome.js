@@ -3,6 +3,8 @@ import Main from "./Main";
 import ReactDOM from "react-dom";
 import "./css/bootstrap.css";
 import "./css/style.css";
+import Info from "./Info.js";
+import {INFORMATION} from "./Utils.js";
 
 class Welcome extends Component {
     /**
@@ -32,19 +34,30 @@ class Welcome extends Component {
         });
     }
 
+    /**
+     * Renders informed consent page.
+     */
+     renderIFC = () => {
+        ReactDOM.render(<Info textDescription={INFORMATION}/>,
+            document.getElementById("root"))
+    }
 
     handleSubmit = (event) => {
         event.preventDefault();
         if (this.state.consent) {
-            ReactDOM.render(<Main ID = {this.state.id}/>,
-            document.getElementById("root"))
+            if(sessionStorage.getItem("nodeData")) {
+                let data = JSON.parse(sessionStorage.getItem("nodeData"));
+                ReactDOM.render(<Main ID = {this.state.id} nodes = {data.nodes} links = {data.links} foci = {data.foci}/>,
+                document.getElementById("root"))
+              } else {
+                ReactDOM.render(<Main ID = {this.state.id} nodes = {[]} links = {[]} foci = {[]}/>,
+                document.getElementById("root"))
+              }
         } else {
             alert("Please provide consent.")
         }
         
     }
-
-
 
     render() {
         return (
@@ -61,7 +74,7 @@ class Welcome extends Component {
                 required
                 />
                 <label style={{"text-align":"left"}}>
-                I consent to my data being stored.
+                I consent to my data being stored and confirm that I have read the <a style={{color:"blue","text-decoration":"underline"}} onClick={this.renderIFC} >informed consent sheet</a>.
                 <input
                     name="consent"
                     type="checkbox"

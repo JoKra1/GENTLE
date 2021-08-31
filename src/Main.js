@@ -8,21 +8,44 @@ import NodeButtonComponent from"./NodeButtonComponent";
 import NodeComponent from"./NodeComponent";
 import NodeSliderComponent from "./NodeSliderComponent";
 import NodeCategoriesComponent from "./NodeCategoriesComponent";
+import Thanks from "./Thanks";
 import { Navbar, Nav, NavItem} from 'react-bootstrap';
 import $ from "jquery";
 
-/**
- * Constants to detect mobile users, and to calculate the
- * size of the actual SVG element, which is used to calculate
- * important properties later on.
- */
+// Constant imports
+import {
+  SVGHEIGHT,
+  SVGWIDTH,
+  MOBILE,
+  NODESIZE,
+  NODERADIUS,
+  AVBWIDTH,
+  AVBHEIGHT
+} from "./Graph";
 
-const svgHeight = window.innerHeight * 0.75;
-const svgWidth = (window.innerWidth > 1140? 1140:window.innerWidth) - 60;
-const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : false) // to detect small displays, requiring different render
-const nodeRadius = ((mobile ? 25:35) + 0.015 * svgWidth);
-const avbWidth = svgWidth - 2 * nodeRadius;
-const URL = "/ajax";
+// Descriptions & Layout functions
+import {
+  CATEGORIES,
+  SEPARATOR,
+  SCREENDESCRIPTIONS,
+  DELETEWARNING,
+  DUPLICATEWARNING,
+  SLIDERWARNING,
+  CATEGORYWARNING,
+  rect_layout,
+  box_layout,
+  recalculate_foci,
+  recalculate_nodes,
+  returnTemplateNode,
+  returnYouTemplate,
+  hasLink,
+  hasLinkAt,
+  updateNodeRenderProps,
+  removeNodeAt,
+  doesNameOverlap
+} from "./Utils";
+
+const STORAGEURL = "/ajax";
 
 /**
  * Main class, acting as the router and logical interface between
@@ -31,7 +54,7 @@ const URL = "/ajax";
  * Here callbacks are defined and passed down to the different components.
  * 
  * References:
- * Screen layouts and layout calculations are partially inspired from and based on:
+ * Screen layouts are partially inspired from and based on:
  * http://www.tobiasstark.nl/GENSI/GENSI.htm
  * 
  * 
@@ -46,115 +69,31 @@ class Main extends Component {
    * e.g. nodes:this.props.nodes could be used to fetch existing nodes.
    * @param {*} props 
    */
-  constructor(props){
+   constructor(props){
     super(props);
-    this.ID = this.props.ID || "TestUser";
-    console.log(this.ID);
-    this.state = {nodes:[{key:0,name:"You",categoryColor:"green",
-                          color:"green",size:10,x:svgWidth/2,y:svgHeight/2,
-                          floatX:svgWidth/2,floatY:svgHeight/2,fixed:false,
-                          float:false,link:false,shouldFloat:false}],
-                  links:[],
-                  foci:[{key:0,x:svgWidth/2,y:svgHeight/2}],
-                  counter:0,
+    this.ID = this.props.ID;
+    this.state = {nodes:(this.props.nodes.length === 0 ? [returnYouTemplate()]:
+                                                          recalculate_nodes(this.props.nodes,recalculate_foci(this.props.foci))),
+                  links:this.props.links,
+                  foci:(this.props.foci.length === 0 ? [{key:0,x:SVGWIDTH/2,y:SVGHEIGHT/2}]:recalculate_foci(this.props.foci)),
                   source:-1,
                   correction:0};
-
     this.prevNodes = [];
     this.prevFoci = [];
-
-    /**
-     * Add some basic categories for demonstration.
-     */
-    this.categories = [{key:0, text:"Cat1", color:"#E27D60"},
-                       {key:1, text:"Cat2", color:"#85DCBA"},
-                       {key:2, text:"Cat3", color:"#E8A87C"},
-                       {key:3, text:"Cat4", color:"red"}];
-
-    /**
-     * Showing how the rendering of categories can also be
-     * used to create visually seperating elements on screen.
-     */
-    this.seperator = [{key:0,text:"",color:"white",x:1015,y:35,width:0,height:0},
-                      {key:1,text:"",color:"green",x:svgWidth*0.5,y:10,width:2,height:svgHeight*0.9}]
-
+    
   }
 
-  // Layout re-calculations
+  //Callback functions
 
   /**
-   * Adapts foci to work with different screen sizes.
-   * @param {[foci]} foci The foci points of all nodes
+   * Transfer callback. Called by the individual components once a screen is completed.
    */
-  recalculate_foci = (foci) => {
-    let recalculated_f = [];
-    for (let f = 0; f < foci.length; f++) {
-      if (foci[f].key ==0) {
-        recalculated_f.push({
-          key:foci[f].key,
-          x:svgWidth/2,
-          y:svgHeight/2
-        })
-      } else {
-        let r = (svgWidth < 500 ? 0.375:0.7);
-        let x = ((svgWidth/2) + (1.15*(svgHeight/2*r))*Math.cos((f / 25 * Math.PI * 2) - 2));
-        let y = ((svgHeight/2) + (1.15*(svgHeight/2*r))*Math.sin((f / 25 * Math.PI * 2) - 2));
-
-        recalculated_f.push({
-          key:foci[f].key,
-          x:x,
-          y:y
-        })
-      }
-    }
-    return recalculated_f;
-  }
-
-  /**
-   * recalculate nodes to work with different screen sizes.
-   * @param {[nodes]} nodes nodes existing in network
-   * @param {[foci]} foci foci of nodes
-   */
-  recalculate_nodes = (nodes,foci) => {
-    for (let n = 0; n < nodes.length; n++) {
-      if (nodes[n].key == 0) {
-        // set position of new node if device was changed
-        nodes[n].floatX=svgWidth/2;
-        nodes[n].floatY=svgHeight/2;
-      }
-      nodes[n].size = (mobile ? 20:30);
-
-      if(nodes[n].link && n !== 0) {
-        continue;
-      } else {
-          if (!mobile || n == 0) {
-            nodes[n].floatX = foci[n].x;
-            nodes[n].floatY = foci[n].y;
-            nodes[n].shouldFloat = false;
-          } else {
-            nodes[n].floatX = ((n-1)%13+1) * 27;
-            nodes[n].floatY = svgHeight*0.95 + ((n) > 13? 55:0);
-            nodes[n].shouldFloat = false;
-          }
-          
-      }
-      
-    }
-    return nodes;
-  }
-
-  // Data transfer
-  transferData = () => {
-    $.ajax({url:URL,
+   transferData = () => {
+    sessionStorage.setItem("nodeData",JSON.stringify({nodes:this.state.nodes,links:this.state.links,foci:this.state.foci}));
+    $.ajax({url:STORAGEURL,
                 method:"Post",
-                data:{"ID":this.state.id,
-                    "data":JSON.stringify({nodes:this.state.nodes,links:this.state.links})},
-                success: function(ID){
-                  console.log("Success.")
-                },
-                error: function(){
-                    alert("Failure")
-                }})
+                data:{"ID": this.ID,"data":JSON.stringify({nodes:this.state.nodes,links:this.state.links})},
+            })
   }
 
   //Callback functions
@@ -170,23 +109,12 @@ class Main extends Component {
   }
 
   /**
-   * Used to determine to which node the next selection should apply
-   * depending on (partial) completion for a given property of a node
-   * @param {String} key property of node for which to determine selection
-   * @param {String} criterion criterion on which to base determination
+   * Returns the number of nodes + 1 which have a different value at
+   * a specific criterion than the default value.
+   * @param {string} key criterion at which to check the default value
+   * @param {any} criterion default value for that specific criterion
+   * @returns {int} output The next node which still has a default value
    */
-
-  determineCounter = (key,criterion) => {
-    let output = 0;
-    let nodes = this.state.nodes.slice(1);
-    for(let i = 0; i < nodes.length; ++i) {
-      if(nodes[i][key] !== criterion){
-        ++output;
-      }
-    }
-    this.setState({counter:output});
-  }
-
   determineCounterReturn = (key,criterion) => {
     let output = 1; // Skip "You" node
     let nodes = this.state.nodes.slice(1);
@@ -205,69 +133,61 @@ class Main extends Component {
   }
 
   /**
+   * Handles changes to existing nodes in the name generator screen.
+   * Included cases are: re-naming and deletion of existing node.
+   * @param {string} name 
+   * @param {[nodes]} nodes 
+   * @param {[foci]} foci 
+   */
+  handleNodeChange = (name,nodes,foci) => {
+    //received edit callback previously
+    if(!name) {
+      // Plan to delete
+      if(this.state.links.length > 0) {
+        alert(DELETEWARNING);
+        this.setState({correction:0});
+      } else {
+        let splicedObjs = removeNodeAt(nodes,foci,this.state.correction);
+        foci = splicedObjs.foci;
+        nodes = splicedObjs.nodes;
+        this.setState({nodes:nodes,foci:foci,counter:this.state.nodes.length,correction:0});
+      }
+    } else {
+      //Just rename selected node
+      nodes[this.state.correction].name = name;
+      this.setState({nodes:nodes,counter:this.state.nodes.length,correction:0});
+    }
+  }
+ 
+  /**
    * Receives name from lower components and creates a node
    * with all relevant properties
    * @param {String} name passed from NodeButtonComponent
    */
   createNodesButtonCallback = (name) => {
-
-    if(this.state.counter < this.state.nodes.length-1) {
-      //received edit callback previously
-      let nodes = JSON.parse(JSON.stringify(this.state.nodes));
-      nodes[this.state.counter].name = name;
-      this.setState({nodes:nodes,counter:this.state.nodes.length});
-    } else {
-        let counter = this.state.nodes.length;
-        if(counter > 25){
-          alert("You entered enough names, thank you. Click on a node to change their name!");
-        }
-        else if(!name) {
-          alert("Please provide a Name!");
-        } else {
-          let nodes = JSON.parse(JSON.stringify(this.state.nodes));
-          let foci = JSON.parse(JSON.stringify(this.state.foci));
-          // Just some example properties to provide examples how the
-          // different screens can be used to collect different measurements.
-          nodes.push({
-            key:counter,
-            name:name,
-            size:(mobile ? 20:30),
-            fixed:false,
-            float:false,
-            link:false,
-            color:"grey",
-            sex:"",
-            age:"",
-            category:"",
-            categoryColor:"white",
-            fixedPosX:svgWidth/2,
-            fixedPosY:svgHeight*0.1 + (Math.random() * (svgHeight * 0.7)),
-            continuous1:-1,
-            continuous2:-1,
-            x:250,
-            y:250,
-            floatX:0,
-            floatY:0,
-            shouldFloat:false
-          })
-
-          let r = (svgWidth < 500 ? 0.37:0.7);
-          let x = ((svgWidth/2) + (1.15*(svgHeight/2*r))*Math.cos((counter / 25 * Math.PI * 2) - 2));
-          let y = ((svgHeight/2) + (1.15*(svgHeight/2*r))*Math.sin((counter / 25 * Math.PI * 2) - 2));
-
-          foci.push({
-            key:counter,
-            x:x,
-            y:y
-          })
-          
-          // Push state
-          this.transferData();
-          this.setState({nodes:nodes,foci:foci,counter:counter + 1});
-          
-          
-          ;
-        }
+    let nodes = JSON.parse(JSON.stringify(this.state.nodes));
+    let foci = JSON.parse(JSON.stringify(this.state.foci));
+    if(this.state.correction !== 0) {
+      this.handleNodeChange(name,nodes,foci);
+    }
+    else {
+      // Generate new node if name does not exist
+      let counter = this.state.nodes.length;
+      if(doesNameOverlap(name,nodes)) {
+        alert(DUPLICATEWARNING);
+      }
+      else {
+        nodes.push(returnTemplateNode(counter,name));
+        let coords = rect_layout(counter);
+        
+        foci.push({
+          key:counter,
+          x:coords[0],
+          y:coords[1]
+        })
+        // Push state
+        this.setState({nodes:nodes,foci:foci});
+      }
     }
   }
 
@@ -282,20 +202,23 @@ class Main extends Component {
   }
 
   /**
-   * This should probably also be converted to a generic method
-   * for color changing. Need to get back to this.
+   * Callback to change the "sex" of a node at
+   * a specific index that is provided.
+   * @param {number} counter index for the node
    */
   changeSexNodeCallback = (counter) => {
     let nodes = this.state.nodes;
 
-    if (nodes[counter].sex == "male") {
-        nodes[counter].sex = "female";
-        nodes[counter].color = "pink";
-    } else {
+    if (nodes[counter].sex == "female") {
         nodes[counter].sex = "male";
-        nodes[counter].color = "blue";
+        nodes[counter].color = "#B5E0F1";
+    } else if (nodes[counter].sex == "male") {
+        nodes[counter].sex = "other";
+        nodes[counter].color = "#FE9932";
+    } else {
+      nodes[counter].sex = "female";
+      nodes[counter].color = "#FADADD";
     }
-    this.transferData();
     this.setState({nodes:nodes});
   }
 
@@ -304,14 +227,13 @@ class Main extends Component {
    * @param {string} key key of node property
    * @param {number} counter that identifies node
    */
-  sliderUpdateValue = (key,counter) => {
+   sliderUpdateValue = (key,counter) => {
     let value = 1;
     if(counter < this.state.nodes.length) {
       if(this.state.nodes[counter][key] !== ""){
           value = parseInt(this.state.nodes[counter][key]);
       }
     }
-    this.transferData();
     return value;
   }
 
@@ -324,12 +246,11 @@ class Main extends Component {
   changeSliderButtonCallback = (key, counter, value) => {
     //updates background associated with node
     if(counter >= this.state.nodes.length) {
-      alert("You provided the age for every person, thank you. Click on a node to change their age!")
+      alert(SLIDERWARNING);
     } else {
         let nodes = JSON.parse(JSON.stringify(this.state.nodes));
         nodes[counter][key] = value;
-        this.transferData();
-        this.setState({nodes:nodes, counter: counter + 1, correction: 0});
+        this.setState({nodes:nodes, correction: 0});
     }
   }
 
@@ -345,13 +266,12 @@ class Main extends Component {
   changeCategoryButtonCallback = (key, keyColor, categories, counter, id, category) => {
     //updates background associated with node
     if(counter >= this.state.nodes.length) {
-      alert("You provided the category for every person, thank you. Click on a node to change their category!")
+      alert(CATEGORYWARNING);
     } else {
         let nodes = JSON.parse(JSON.stringify(this.state.nodes));
         nodes[counter][key] = category;
         nodes[counter][keyColor] = categories[id].color;
-        this.transferData();
-        this.setState({nodes:nodes, counter: counter + 1, correction: 0});
+        this.setState({nodes:nodes, correction: 0});
     }
   }
 
@@ -364,18 +284,32 @@ class Main extends Component {
    */
   continuousGenericCallback = (key, id, x, y) => {
     //collects final placement when drag has ended
-    let inner_dist = ((mobile ? 25:35) + 0.015 * svgWidth);
-    let avb_width = svgWidth - 2 * inner_dist;
-    let value = (x - inner_dist)/avb_width;
-    //console.log(pos);
+
+    let value = (x - NODERADIUS)/AVBWIDTH;
+    value = Math.max(0.00,value);
+    value = Math.min(1.00,value);
     let nodes = this.state.nodes;
     nodes[id].fixedPosX = x;
-    //nodes[id].fixedPosY = y;
     nodes[id][key] = value;
-    this.transferData();
     this.setState({nodes:nodes});
   }
 
+  /**
+   * Switches a boolean property of a specific node.
+   * @param {string} key property/criterion of a node
+   * @param {number} counter index of a node
+   */
+  booleanNodeCallback = (key, counter) => {
+    let nodes = this.state.nodes;
+
+    if (nodes[counter][key]) {
+      nodes[counter][key] = false;
+    } else {
+      nodes[counter][key] = true;
+    }
+    this.setState({nodes:nodes});
+  }
+  
   /**
    *   Calculates links between nodes and sets properties for static/dynamic rendering
        When a source is set below, a snapshot of the network is created
@@ -383,20 +317,24 @@ class Main extends Component {
        the nodes are allowed to float to find their position again.
 
    * @param {number} counter received from Graph
-   * @param {[nodes]} forceNodes received from Graph - copy of nodes
+   * @param {[nodes]} callBackNodes received from Graph - copy of nodes
                           for rendering purposes of the network constant position
                           information is necessary for X and Y coordinates. They are
                           stored in floatX and floatY respectively and are used by the
                           network/node view render defined below to update the foci.
    */
-  networkNodesCallback = (counter, forceNodes) => {
-      
+  networkNodesCallback = (counter, callBackNodes) => {
+    
     let links = JSON.parse(JSON.stringify(this.state.links));
     let nodes = JSON.parse(JSON.stringify(this.state.nodes));
-    let foci = JSON.parse(JSON.stringify(this.state.foci));
+    let forceNodes = callBackNodes;
+
+    if (MOBILE) {
+      // Mobile handling
+      forceNodes = [returnYouTemplate()].concat(callBackNodes);
+    }
+
     let source = this.state.source;
-    let hasLink = 0;
-    let linkAt = 0;
 
     if(source === 0 || counter === 0) {
       // prevent connections to anchor "you" node
@@ -417,22 +355,13 @@ class Main extends Component {
           // Source exists check for links
           if(source !== counter){
           
-          for(let i = 0; i < links.length; ++i) {
-            if((links[i].source === source &&
-              links[i].target === counter) ||
-              (links[i].target === source &&
-              links[i].source === counter)) {
-              hasLink = 1;
-              linkAt = i;
-              break;
-            }
-          }
-          if(hasLink) {
-            // has link - break
-            links.splice(linkAt,1);
-              nodes[source].link -= 1;
+          let linkTest = hasLinkAt(links,source,counter);
 
-              nodes[counter].link -= 1;
+          if(linkTest.hasLink) {
+            // has link - break
+            links.splice(linkTest.linkAt,1);
+            nodes[source].link -= 1;
+            nodes[counter].link -= 1;
 
           } else {
               // has no link - create
@@ -440,37 +369,21 @@ class Main extends Component {
                           source:source,
                           target:counter
                         });
-
-                nodes[source].link += 1;
-
-                nodes[counter].link += 1;
+              nodes[source].link += 1;
+              nodes[counter].link += 1;
 
           }
           // determine properties for rendering decision e.g. static vs. dynamic
-          for(let i = 0; i < nodes.length; ++i) {
-            if(nodes[i].link && i !== 0) {
-              nodes[i].floatX = forceNodes[i].x;
-              nodes[i].floatY = forceNodes[i].y;
-              nodes[i].shouldFloat = true;
-            } else {
-                if (!mobile || i == 0) {
-                  nodes[i].floatX = foci[i].x;
-                  nodes[i].floatY = foci[i].y;
-                  nodes[i].shouldFloat = false;
-                } else {
-                  nodes[i].floatX = ((i-1)%13+1) * 27;
-                  nodes[i].floatY = svgHeight*0.95 + ((i) > 13? 55:0);
-                  nodes[i].shouldFloat = false;
-                }
-                
-            }
-          }
-
+          updateNodeRenderProps(nodes,forceNodes);
         }
+
         // reset source
-        source = -1;
-        this.transferData();
-        this.setState({source:source,nodes:nodes,links:links,counter:counter + 1});
+        if (MOBILE) {
+          source = (source === counter ? -1 : source);
+        } else {
+          source = -1;
+        }
+        this.setState({source:source,nodes:nodes,links:links});
       }
     }
   }
@@ -512,14 +425,20 @@ class Main extends Component {
 
                   <NavItem>
                     <NavLink className ="nav-link"
+                             exact to="/Boolean"
+                             >5) Assign boolean features. </NavLink>
+                  </NavItem>
+
+                  <NavItem>
+                    <NavLink className ="nav-link"
                              exact to="/Continuous1"
-                             >5) Assign continuous relative values 1. </NavLink>
+                             >6) Assign continuous relative values 1. </NavLink>
                   </NavItem>
 
                   <NavItem>
                     <NavLink className ="nav-link"
                              exact to="/Continuous2"
-                             >6) Assign continuous relative values 2. </NavLink>
+                             >7) Assign continuous relative values 2. </NavLink>
                   </NavItem>
 
                   <NavItem>
@@ -530,141 +449,223 @@ class Main extends Component {
             </Navbar.Collapse>
           </Navbar>
           <div id="content" className="content container">
-            <Route exact path="/" component={ () => <NodeButtonComponent nodes = {this.state.nodes.slice(1)}
-                                                                         route = {"/Click"}
-                                                                         max = {25}
-                                                                         prevNodes = {this.prevNodes}
-                                                                         counter = {this.state.nodes.length}
-                                                                         links = {[]}
-                                                                         foci = {this.state.foci.slice(1)}
-                                                                         prevFoci= {this.prevFoci}
-                                                                         callBackNodes = {this.genericNodesCallback.bind(this)}
-                                                                         callBackButton = {this.createNodesButtonCallback.bind(this)}
-                                                                         collectHistory = {this.collectHistory.bind(this)}
-                                                                         textDescription = {"1) Create Names for up to 25 alters. "}/> }/>
+            <Route exact path="/" component={
+              () => <NodeButtonComponent nodes = {this.state.nodes.slice(1)}
+                                          route = {"/Click"}
+                                          max = {25}
+                                          prevNodes = {this.prevNodes}
+                                          counter = {this.state.nodes.length}
+                                          links = {[]}
+                                          foci = {this.state.foci.slice(1)}
+                                          prevFoci= {this.prevFoci}
+                                          callBackNodes = {this.genericNodesCallback.bind(this)}
+                                          callBackButton = {this.createNodesButtonCallback.bind(this)}
+                                          collectHistory = {this.collectHistory.bind(this)}
+                                          textDescription = {SCREENDESCRIPTIONS[0]}
+                                          transferCallBack = {this.transferData.bind(this)}/>
+            }/>
 
-            <Route exact path="/Click" component={ () => <NodeComponent nodes = {this.state.nodes.slice(1)}
-                                                                         route = {"/Numerical"}
-                                                                         prevNodes = {this.prevNodes}
-                                                                         counter = {this.determineCounterReturn("sex","")}
-                                                                         links = {[]}
-                                                                         foci = {this.state.foci.slice(1)}
-                                                                         prevFoci= {this.prevFoci}
-                                                                         callBackNodes = {this.changeSexNodeCallback.bind(this)}
-                                                                         collectHistory = {this.collectHistory.bind(this)}
-                                                                         textDescription = {"2) Cycle through multiple options, for example to collect the biological sex of alters."}/> }/>
+            <Route exact path="/Click" component={
+              () => <NodeComponent nodes = {this.state.nodes.slice(1)}
+                                    route = {"/Numerical"}
+                                    prevNodes = {this.prevNodes}
+                                    counter = {-1}
+                                    links = {[]}
+                                    foci = {this.state.foci.slice(1)}
+                                    prevFoci= {this.prevFoci}
+                                    callBackNodes = {this.changeSexNodeCallback.bind(this)}
+                                    collectHistory = {this.collectHistory.bind(this)}
+                                    textDescription = {SCREENDESCRIPTIONS[1]}
+                                    transferCallBack = {this.transferData.bind(this)}/>
+            }/>
 
-            <Route exact path="/Numerical" component={ () => <NodeSliderComponent nodes = {this.state.nodes.slice(1)}
-                                                                         route = {"/Categories"}
-                                                                         prevNodes = {this.prevNodes}
-                                                                         counter = {this.determineCounterReturn("age","")}
-                                                                         sliderUpdateValue = {this.sliderUpdateValue("age",this.determineCounterReturn("age",""))}
-                                                                         links = {[]}
-                                                                         foci = {this.state.foci.slice(1)}
-                                                                         prevFoci= {this.prevFoci}
-                                                                         callBackNodes = {this.genericNodesCallback.bind(this)}
-                                                                         callBackButton = {[this.changeSliderButtonCallback.bind(this),"age"]}
-                                                                         collectHistory = {this.collectHistory.bind(this)}
-                                                                         textDescription = {"3) Assign a numerical value, for example the age of participants."}/> }/>
+            <Route exact path="/Numerical" component={
+              () => <NodeSliderComponent nodes = {this.state.nodes.slice(1)}
+                                          route = {"/Categories"}
+                                          prevNodes = {this.prevNodes}
+                                          counter = {this.determineCounterReturn("age","")}
+                                          sliderUpdateValue = {this.sliderUpdateValue("age",this.determineCounterReturn("age",""))}
+                                          links = {[]}
+                                          foci = {this.state.foci.slice(1)}
+                                          prevFoci= {this.prevFoci}
+                                          callBackNodes = {this.genericNodesCallback.bind(this)}
+                                          callBackButton = {[this.changeSliderButtonCallback.bind(this),"age"]}
+                                          collectHistory = {this.collectHistory.bind(this)}
+                                          textDescription = {SCREENDESCRIPTIONS[2]}
+                                          transferCallBack = {this.transferData.bind(this)}/>
+            }/>
             
-            <Route exact path="/Categories" component={ () => <NodeCategoriesComponent nodes = {this.state.nodes.slice(1)}
-                                                                         route = {"/Continuous1"}
-                                                                         prevNodes = {this.prevNodes}
-                                                                         counter = {this.determineCounterReturn("category","")}
-                                                                         links = {[]}
-                                                                         categories = {this.categories}
-                                                                         foci = {this.state.foci.slice(1)}
-                                                                         prevFoci= {this.prevFoci}
-                                                                         callBackNodes = {this.genericNodesCallback.bind(this)}
-                                                                         callBackButton = {[this.changeCategoryButtonCallback.bind(this),"category","categoryColor",this.categories]}
-                                                                         collectHistory = {this.collectHistory.bind(this)}
-                                                                         textDescription = {"4) Click on the buttons to assign a category to a node."}/> }/>
+            <Route exact path="/Categories" component={
+              () => <NodeCategoriesComponent nodes = {this.state.nodes.slice(1)}
+                                              route = {"/Boolean"}
+                                              prevNodes = {this.prevNodes}
+                                              counter = {this.determineCounterReturn("category","")}
+                                              links = {[]}
+                                              categories = {CATEGORIES}
+                                              foci = {this.state.foci.slice(1)}
+                                              prevFoci= {this.prevFoci}
+                                              callBackNodes = {this.genericNodesCallback.bind(this)}
+                                              callBackButton = {[this.changeCategoryButtonCallback.bind(this),"category","categoryColor",CATEGORIES]}
+                                              collectHistory = {this.collectHistory.bind(this)}
+                                              textDescription = {SCREENDESCRIPTIONS[3]}
+                                              transferCallBack = {this.transferData.bind(this)}/>
+            }/>
 
-            <Route exact path="/Continuous1" component={ () => <NodeComponent   fixed = {1}
-                                                                              opac = {"dynamic"}
-                                                                              nodes = {this.state.nodes.slice(1).map((node, i) => (
-                                                                                      {key:node.key,
-                                                                                        name:node.name,
-                                                                                        size:node.size,
-                                                                                        fixed: true,
-                                                                                        color: node.color,
-                                                                                        sex: node.sex,
-                                                                                        age: (node.continuous1 != -1 ? node.continuous1.toFixed(2):0.5),
-                                                                                        categoryColor: node.categoryColor,
-                                                                                        x:(node.continuous1 != -1 ? node.continuous1*avbWidth + nodeRadius:svgWidth/2),
-                                                                                        y:node.fixedPosY
-                                                                                       }
-                                                                              ))}
-                                                                              prevNodes = {this.prevNodes}
-                                                                              route = {"/Continuous2"}
-                                                                              counter = {-1}
-                                                                              links = {[]}
-                                                                              foci = {this.state.foci.slice(1)}
-                                                                              prevFoci= {this.prevFoci}
-                                                                              categories= {this.seperator}
-                                                                              callBackNodes = {[this.continuousGenericCallback.bind(this),"continuous1"]}
-                                                                              collectHistory = {this.collectHistory.bind(this)}
-                                                                              textDescription = {"5) Move nodes closer to the line to indicate proximity. Useful to measure continuous relative scales."}/> }/>
+            <Route exact path="/Boolean" component={
+              () => <NodeComponent nodes = {this.state.nodes.slice(1).map((node, i) => (
+                                              {key:node.key,
+                                                name:node.name,
+                                                size:node.size,
+                                                fixed: false,
+                                                color: node.color,
+                                                sex: node.sex,
+                                                age: node.age,
+                                                categoryColor: node.categoryColor,
+                                                x:node.fixedPosX,
+                                                y:node.fixedPosY,
+                                                opac:(node.booleanCondition ? true:false)
+                                              }
+                                            ))}
+                                      route = {"/Continuous1"}
+                                      opac = {"conditional"}
+                                      prevNodes = {this.prevNodes}
+                                      counter = {-1}
+                                      links = {[]}
+                                      foci = {this.state.foci.slice(1)}
+                                      prevFoci= {this.prevFoci}
+                                      callBackNodes = {[this.booleanNodeCallback.bind(this),"booleanCondition"]}
+                                      collectHistory = {this.collectHistory.bind(this)}
+                                      textDescription = {SCREENDESCRIPTIONS[4]}
+                                      transferCallBack = {this.transferData.bind(this)}/>
+            }/>
+
+            <Route exact path="/Continuous1" component={
+              () => <NodeComponent   fixed = {1}
+                                      opac = {"dynamic"}
+                                      nodes = {this.state.nodes.slice(1,this.determineCounterReturn("continuous1",-1) + 1).map((node, i) => (
+                                        {key:node.key,
+                                          name:node.name,
+                                          size:node.size,
+                                          fixed: true,
+                                          color: node.color,
+                                          sex: node.sex,
+                                          age: (node.continuous1 != -1 ? node.continuous1.toFixed(2):0.5),
+                                          categoryColor: node.categoryColor,
+                                          x:(node.continuous1 != -1 ? node.continuous1*AVBWIDTH + NODERADIUS:SVGWIDTH/2),
+                                          y:node.fixedPosY
+                                        }
+                                      ))}
+                                      prevNodes = {this.prevNodes}
+                                      route = {"/Continuous2"}
+                                      counter = {-1}
+                                      links = {[]}
+                                      foci = {this.state.foci.slice(1)}
+                                      prevFoci= {this.prevFoci}
+                                      categories= {SEPARATOR}
+                                      callBackNodes = {[this.continuousGenericCallback.bind(this),"continuous1"]}
+                                      collectHistory = {this.collectHistory.bind(this)}
+                                      textDescription = {SCREENDESCRIPTIONS[5]}
+                                      transferCallBack = {this.transferData.bind(this)}/>
+            }/>
 
             
-            <Route exact path="/Continuous2" component={ () => <NodeComponent   fixed = {1}
-                                                                              opac = {"dynamic"}
-                                                                              nodes = {this.state.nodes.slice(1).map((node, i) => (
-                                                                                      {key:node.key,
-                                                                                        name:node.name,
-                                                                                        size:node.size,
-                                                                                        fixed: true,
-                                                                                        color: node.color,
-                                                                                        sex: node.sex,
-                                                                                        age: (node.continuous2 != -1 ? node.continuous2.toFixed(2):0.5),
-                                                                                        categoryColor: node.categoryColor,
-                                                                                        x:(node.continuous2 != -1 ? node.continuous2*avbWidth + nodeRadius:svgWidth/2),
-                                                                                        y:node.fixedPosY
-                                                                                       }
-                                                                              ))}
-                                                                              prevNodes = {this.prevNodes}
-                                                                              route = {"/Interconnection"}
-                                                                              counter = {-1}
-                                                                              links = {[]}
-                                                                              foci = {this.state.foci.slice(1)}
-                                                                              prevFoci= {this.prevFoci}
-                                                                              callBackNodes = {[this.continuousGenericCallback.bind(this),"continuous2"]}
-                                                                              collectHistory = {this.collectHistory.bind(this)}
-                                                                              textDescription = {"6) Move nodes closer to the right to indicate proximity. Useful to measure continuous relative scales."}/> }/>
+            <Route exact path="/Continuous2" component={
+              () => <NodeComponent   fixed = {1}
+                                      opac = {"dynamic"}
+                                      nodes = {this.state.nodes.slice(1,this.determineCounterReturn("continuous2",-1) + 1).map((node, i) => (
+                                        {key:node.key,
+                                          name:node.name,
+                                          size:node.size,
+                                          fixed: true,
+                                          color: node.color,
+                                          sex: node.sex,
+                                          age: (node.continuous2 != -1 ? node.continuous2.toFixed(2):0.5),
+                                          categoryColor: node.categoryColor,
+                                          x:(node.continuous2 != -1 ? node.continuous2*AVBWIDTH + NODERADIUS:SVGWIDTH/2),
+                                          y:node.fixedPosY
+                                        }
+                                      ))}
+                                      prevNodes = {this.prevNodes}
+                                      route = {"/Interconnection"}
+                                      counter = {-1}
+                                      links = {[]}
+                                      foci = {this.state.foci.slice(1)}
+                                      prevFoci= {this.prevFoci}
+                                      callBackNodes = {[this.continuousGenericCallback.bind(this),"continuous2"]}
+                                      collectHistory = {this.collectHistory.bind(this)}
+                                      textDescription = {SCREENDESCRIPTIONS[6]}
+                                      transferCallBack = {this.transferData.bind(this)}/>
+            }/>
 
                                                     
-            <Route exact path="/Interconnection" component={ () => <NodeComponent nodes = {this.state.nodes.map((node, i) => (
-                                                                                      {key:node.key,
-                                                                                        name:"",
-                                                                                        size:10,
-                                                                                        fixed: false,
-                                                                                        float: (node.shouldFloat ? true:false),
-                                                                                        color: node.color,
-                                                                                        sex: node.sex,
-                                                                                        age: node.name,
-                                                                                        categoryColor: node.categoryColor,
-                                                                                        x:node.floatX,
-                                                                                        y:node.floatY,
-                                                                                        link:node.link,
-                                                                                        floatX:node.floatX,
-                                                                                        floatY:node.floatY
-                                                                                       }
-                                                                              ))}
-                                                                                  prevNodes = {this.prevNodes}
-                                                                                  updateCounter = {this.determineCounter.bind(this)}
+            <Route exact path="/Interconnection" component={
+              () => (MOBILE ? <NodeComponent nodes = {this.state.nodes.slice(1).map((node, i) => (
+                                                      {key:node.key,
+                                                        name:node.name,
+                                                        size:node.size,
+                                                        fixed: false,
+                                                        color: (this.state.source == node.key ? "#00ff00" : node.color),
+                                                        sex: node.sex,
+                                                        age: node.age,
+                                                        categoryColor: node.categoryColor,
+                                                        x:node.fixedPosX,
+                                                        y:node.fixedPosY,
+                                                        opac:(this.state.source === -1 ? node.link > 0 : hasLink(this.state.links,this.state.source,node.key)),
+                                                        float:false,
+                                                        link:node.link,
+                                                        floatX:node.floatX,
+                                                        floatY:node.floatY
+                                                        }
+                                              ))}
+                                              route = {"/End_of_Study"}
+                                              opac = {"conditional"}
+                                              prevNodes = {this.prevNodes}
+                                              counter = {-1}
+                                              links = {[]}
+                                              foci = {this.state.foci.slice(1)}
+                                              prevFoci= {this.prevFoci}
+                                              callBackNodes = {this.networkNodesCallback.bind(this)}
+                                              collectHistory = {this.collectHistory.bind(this)}
+                                              textDescription = {SCREENDESCRIPTIONS[7]}
+                                              transferCallBack = {this.transferData.bind(this)}/>
                                                                                   
-                                                                                  counter = {-1}
-                                                                                  float = {1}
-                                                                                  links = {this.state.links}
-                                                                                  foci = {this.state.foci.map((focus,i) => (
-                                                                                                {key:focus.key,
-                                                                                                x:(!mobile || i == 0 ? (this.state.nodes[i].floatX ? this.state.nodes[i].floatX: focus.x): (this.state.nodes[i].floatX ? this.state.nodes[i].floatX:((i-1)%13+1) * 27)),
-                                                                                                y:(!mobile || i == 0 ? (this.state.nodes[i].floatY ? this.state.nodes[i].floatY: focus.y): (this.state.nodes[i].floatY ? this.state.nodes[i].floatY:svgHeight*0.95 + ((i) > 13? 55:0)))}
-                                                                                          ))}
-                                                                                  prevFoci= {this.prevFoci}
-                                                                                  callBackNodes = {this.networkNodesCallback.bind(this)}
-                                                                                  collectHistory = {this.collectHistory.bind(this)}
-                                                                                  textDescription = {"7) Allows to link connected people together and to split existing links by clicking on two connected nodes."}/> }/>
+                                              :
+                                                                                        
+                              <NodeComponent nodes = {this.state.nodes.map((node, i) => (
+                                                  {key:node.key,
+                                                    name:"",
+                                                    size:(MOBILE ? 10 : 12),
+                                                    fixed: false,
+                                                    float: (node.shouldFloat ? true:false),
+                                                    color: node.color,
+                                                    sex: node.sex,
+                                                    age: node.name,
+                                                    categoryColor: node.categoryColor,
+                                                    x:node.floatX,
+                                                    y:node.floatY,
+                                                    link:node.link,
+                                                    floatX:node.floatX,
+                                                    floatY:node.floatY
+                                                    }
+                                              ))}
+                                              prevNodes = {this.prevNodes}
+                                              route = {"/End_of_Study"}
+                                              counter = {-1}
+                                              float = {1}
+                                              links = {this.state.links}
+                                              foci = {this.state.foci.map((focus,i) => (
+                                                            {key:focus.key,
+                                                            x:(this.state.nodes[i].floatX? this.state.nodes[i].floatX: box_layout(i)[0]),
+                                                            y:(this.state.nodes[i].floatY? this.state.nodes[i].floatY: box_layout(i)[1])}
+                                                      ))}
+                                              prevFoci= {this.prevFoci}
+                                              callBackNodes = {this.networkNodesCallback.bind(this)}
+                                              collectHistory = {this.collectHistory.bind(this)}
+                                              textDescription = {SCREENDESCRIPTIONS[7]}
+                                              transferCallBack = {this.transferData.bind(this)}/>)
+            }/>
+
+            <Route exact path = "/End_of_Study" component={ () => <Thanks textDescription = {SCREENDESCRIPTIONS[8]} transferCallBack = {this.transferData.bind(this)}/>}/>
           </div>
         </div>
       </HashRouter>

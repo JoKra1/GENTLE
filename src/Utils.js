@@ -18,7 +18,7 @@ import {
  export function returnTemplateNode(counter, name) {
      return {key:counter,
             name:name,
-            size:(mobile ? 20:30),
+            size:(MOBILE ? 20:30),
             fixed:false,
             float:false,
             link:false,
@@ -31,6 +31,7 @@ import {
             fixedPosY:SVGHEIGHT*0.1 + (Math.random() * (SVGHEIGHT * 0.8)),
             continuous1:-1,
             continuous2:-1,
+            booleanCondition:false,
             x:250,
             y:250,
             floatX:0,
@@ -70,7 +71,7 @@ export const CATEGORIES = [{key:0, text:"Cat1", color:"#E27D60"},
  * used to create visually seperating elements on screen.
  */
 export const SEPARATOR = [{key:0,text:"",color:"white",x:1015,y:35,width:0,height:0},
-                          {key:1,text:"",color:"green",x:svgWidth*0.5,y:10,width:2,height:svgHeight*0.9}];
+                          {key:1,text:"",color:"green",x:SVGWIDTH*0.5,y:10,width:2,height:SVGHEIGHT*0.9}];
 
 /**
  * Descriptions
@@ -80,9 +81,12 @@ export const SCREENDESCRIPTIONS = ["1) Create Names for up to 25 alters.",
                                     "2) Cycle through multiple options, for example to collect the biological sex of alters.",
                                     "3) Assign a numerical value, for example the age of participants.",
                                     "4) Click on the buttons to assign a category to a node.",
-                                    "5) Move nodes closer to the line to indicate proximity. Useful to measure continuous relative scales.",
-                                    "6) Move nodes closer to the right to indicate proximity. Useful to measure continuous relative scales.",
-                                    "7) Link connected people together and split existing links by clicking on two connected nodes."];
+                                    "5) Cycle through two boolean options for each node.",
+                                    "6) Move nodes closer to the line to indicate proximity. Useful to measure continuous relative scales.",
+                                    "7) Move nodes closer to the right to indicate proximity. Useful to measure continuous relative scales.",
+                                    (MOBILE ? "8) Link connected people together and split existing links by clicking on two connected nodes.":
+                                              "8) Link connected people together by first selecting a node (becomes colored in green) and then clicking on all the other nodes connected to this one. Clicking on the green node again permits selecting a new connection source."),
+                                    "Thank you very much for participating in our study. Your responses have been collected and you should close this window."];
 
 /**
  * Alerts
