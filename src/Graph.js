@@ -3,9 +3,16 @@ import * as d3 from 'd3';
 import ReactDOM from "react-dom";
 import {isEqual} from 'underscore';
 
-var width = (window.innerWidth > 1140? 1140:window.innerWidth) - 60;
-var height = window.innerHeight *0.75;
-const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : false)
+
+// Important consts:
+export const SVGHEIGHT = window.innerHeight * 0.75;
+export const SVGWIDTH = (window.innerWidth > 1140? 1140:window.innerWidth) - 60;
+export const MOBILE = (window.innerWidth < 500 || window.innerHeight < 500 ? true : false) // to detect small displays, requiring different render
+export const NODESIZE = MOBILE ? 20 : 30; // just internal size of node
+export const OUTERSTROKE = MOBILE ? 5 : 10;
+export const NODERADIUS = NODESIZE + 1 + (OUTERSTROKE / 2.0); // node size + colored circle
+export const AVBWIDTH = SVGWIDTH - 2 * NODERADIUS;
+export const AVBHEIGHT = SVGHEIGHT - 2 * NODERADIUS;
 
 /**
  * Graph class handling dynamic and static rendering for networks.
@@ -40,8 +47,8 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
     .charge(-1)
     .gravity(0.01)
     .linkDistance(150)
-    .linkStrength(1)
-    .size([width, height]);
+    .linkStrength(MOBILE ? 0.5 : 0.1)
+    .size([SVGWIDTH, SVGHEIGHT]);
     this.conditionNode = 1;
     this.force.drag()
     .on("dragend", (e) => this.dragCallBack(e))
@@ -68,7 +75,14 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
   callback = (d) => {
     let nodes = JSON.parse(JSON.stringify(this.force.nodes()));
     this.force.alpha(0.2);
-    this.props.callBack(d.key, nodes);
+    // additional key parameter for boolean node callback
+    let callbackKey = this.props.callBack[1];
+    if (typeof callbackKey === 'undefined' || callbackKey === null) {
+      this.props.callBack(d.key, nodes);
+    } else {
+      this.props.callBack[0](callbackKey,d.key);
+    }
+    
   }
   
   /**
@@ -76,7 +90,6 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
    * @param {*} v3d virtual dom object
    */
    enterCycleNodes = (v3d) => {
-    //console.log(this.props.opac);
     this.force.start();
     if(this.props.opac == "static") {
       v3d.classed('node', true)
@@ -85,7 +98,7 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
     } else if(this.props.opac == "dynamic") {
       v3d.classed('node', true)
       .call(this.force.drag)
-      .style("opacity", (d) => (d.x/width + 0.1)); //opacity depends on x coordinate
+      .style("opacity", (d) => (d.x/SVGWIDTH + 0.1)); //opacity depends on x coordinate
     } else if(this.props.opac == "conditional") {
       v3d.classed('node', true)
       .call(this.force.drag)
@@ -110,9 +123,9 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
     v3d.append("circle")
         .attr("class", "Node_rel")
         .attr("id", (d) => 'rel_' + d.key)
-        .attr("r", (d) => (d.size == 10 ? d.size +1 : d.size +5))
+        .attr("r", (d) => (d.size + 1))
         .style("stroke", (d) => d.categoryColor)
-        .style("stroke-width",(d) => (d.size == 10 ? "0.5%":"1.5%"))
+        .style("stroke-width",(d) => (OUTERSTROKE))
         .style("fill","none");
   
   
@@ -126,8 +139,8 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
     v3d.append("text") 
         .attr("class", "float_text")
         .attr("text-anchor", "middle")
-        .attr("dx", (mobile ? "1em": "1.25em"))
-        .attr("dy", (mobile ? "1.5em": "1.25em"))
+        .attr("dx", (MOBILE ? "1em": "1.25em"))
+        .attr("dy", (MOBILE ? "1.5em": "1.25em"))
         .attr("pointer-events", "none")
         .text((d) => d.age);
 
@@ -154,7 +167,7 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
     var k = this.force.alpha();
 
     this.force.nodes().forEach(function (d, i) {
-      if ((!d.fixed & !d.float)){
+      if ((!d.fixed && !d.float)){
        d.y += (foci[i].y - d.y) *k;
        d.x += (foci[i].x - d.x)* k;
        }
@@ -163,19 +176,17 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
         * Push-back boundary set-up. Prevents nodes from being
         * pushed outside of the screen.
         */
-       let s_width = (d.size == 10 ? 0.005:0.015) * width;
-       let size = (d.size == 10 ? d.size +1 : d.size +5) + s_width;
        
        if(d.x < 0) {
-         d.x = size;
-       } else if (d.x > width) {
-         d.x = width-size;
+         d.x = NODERADIUS;
+       } else if (d.x > SVGWIDTH) {
+         d.x = SVGWIDTH-NODERADIUS;
        }
 
        if(d.y < 0) {
-         d.y = size;
-       } else if (d.y > height) {
-         d.y = height - size;
+         d.y = NODERADIUS;
+       } else if (d.y > SVGHEIGHT) {
+         d.y = SVGHEIGHT - NODERADIUS;
        }
        
      });
@@ -292,19 +303,18 @@ const mobile = (window.innerWidth < 500 || window.innerHeight < 500 ? true : fal
         conditionFoci = 0;
         this.force.charge((d) =>(d.float ? -500:-30));
 
-        this.force.linkDistance(function(d,i) {
 
-                                  let link = (d.source.link > d.target.link ?
-                                    d.source.link *10: d.target.link *10)
-                                  if (link < 35) {
-                                      return 35;
-                                  } else if (link > 55) {
-                                      return 55;
-                                  } else {
-                                      return link;
-                                  }
-                              
-                                });
+        this.force.linkDistance(function(d) {
+          let link = (d.source.link > d.target.link ?
+            d.source.link : d.target.link )
+          if (link < 3) {
+            return MOBILE ? 35 : 50;
+          } else if (link < 7) {
+            return MOBILE ? 45 : 75;
+          } else {
+            return 100
+          }
+        });
       }
 
       this.props.collectHistory(nodes, foci);
