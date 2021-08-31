@@ -18,11 +18,15 @@ class NodeComponent extends Component {
     
   }
 
-  updateCounter(){
-    if(this.props.updateCondition){
-        this.props.updateCounter(this.props.updateCondition,"");
+  /**
+   * Calls back to main component to store data.
+   */
+
+   transferCallBack(){
+    if(this.props.transferCallBack) {
+      this.props.transferCallBack();
     }
-  }
+  } 
 
   componentDidMount(){
     this.setState(this.state);
@@ -49,8 +53,7 @@ class NodeComponent extends Component {
                   categories = {(this.props.categories? this.props.categories:[])}/>
 
           <div>
-            {this.props.route ? <NavLink  exact to ={this.props.route}
-                                          onClick={this.updateCounter.bind(this)}>
+            {this.props.route ? <NavLink  exact to ={this.props.route} onClick={() => this.transferCallBack()}>
                                     <button id ="confirm_next">Confirm & Next</button>
                                   </NavLink> : <div/>}
           </div>

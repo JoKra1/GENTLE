@@ -20,6 +20,16 @@ class NodeCategoriesComponent extends Component {
     
   }
 
+  /**
+   * Calls back to main component to store data.
+   */
+
+   transferCallBack(){
+    if(this.props.transferCallBack) {
+      this.props.transferCallBack();
+    }
+  } 
+
   componentDidMount(){
     this.setState(this.state);
 
@@ -67,7 +77,7 @@ class NodeCategoriesComponent extends Component {
             ))}
           </div>
           <div>
-            {this.props.route ? <NavLink exact to ={this.props.route}>
+            {this.props.route ? <NavLink exact to ={this.props.route} onClick={() => this.transferCallBack()}>
                                     <button id ="confirm_next">Confirm & Next</button>
                                 </NavLink> : <div/>}
           </div>

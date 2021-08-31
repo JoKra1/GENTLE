@@ -26,6 +26,16 @@ class NodeButtonComponent extends Component {
   }
 
   /**
+   * Calls back to main component to store data.
+   */
+
+  transferCallBack(){
+    if(this.props.transferCallBack) {
+      this.props.transferCallBack();
+    }
+  } 
+
+  /**
    * Checks whether enough nodes have been generated yet.
    * @param {*} event 
    * @returns bool, whether to prepare for next route or not
@@ -33,6 +43,7 @@ class NodeButtonComponent extends Component {
   checkCondition(event){
     if(this.props.counter > (this.props.max - 1)) {
       this.props.callBackButton(this.input.current.value);
+      this.transferCallBack();
       return true
     } else {
       event.preventDefault();
@@ -41,9 +52,28 @@ class NodeButtonComponent extends Component {
 
   }
 
+  /**
+   * Handles usage of the Enter key.
+   * see: https://newbedev.com/how-to-submit-a-form-using-enter-key-in-react-js
+   * To-Do: the example makes use of .code, which seems to be better.
+   * @param {event} event 
+   */
+  keypress_handler(event) {
+    if (event.keyCode == 13) {
+      document.getElementById("confirm_link").click()
+    }
+  }
+
 
   componentDidMount(){
     this.setState(this.state);
+    // see: https://reactjs.org/docs/refs-and-the-dom.html
+    this.input.current.focus()
+    document.addEventListener("keydown",this.keypress_handler);
+  }
+
+  componentWillUnmount(){
+    document.removeEventListener("keydown",this.keypress_handler);
   }
 
   render() {
